@@ -103,6 +103,29 @@ bool authorizeRadiko(std::string& authtoken, const std::string& session_id) {
     return auth2_result == 0;
 }
 
+bool mkdir_p(const std::string& path, mode_t mode = 0755) {
+    struct stat st;
+    if (stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
+        return true;
+    }
+
+    size_t pos = path.find_last_of('/');
+    if (pos != std::string::npos) {
+        std::string parent = path.substr(0, pos);
+        if (!parent.empty() && !mkdir_p(parent, mode)) {
+            return false;
+        }
+    }
+
+    if (mkdir(path.c_str(), mode) != 0) {
+        if (errno != EEXIST) {
+            std::cerr << "Error: Failed to create directory " << path << ": " << strerror(errno) << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
 bool recordRadiko(const std::string& station_id, const std::string& fromtime,
                   const std::string& totime, const std::string& output,
                   const std::string& authtoken,
@@ -115,7 +138,10 @@ bool recordRadiko(const std::string& station_id, const std::string& fromtime,
     std::string outputPath;
     if (!organize.empty()) {
         outputPath = outputDir + organize + "/" + output;
-        mkdir((outputDir + organize).c_str(), 0755);
+        if (!mkdir_p(outputDir + organize, 0755)) {
+          std::cerr << "Error: Failed to create directory " << outputDir + organize << std::endl;
+          return false;
+        }
     } else {
         outputPath = outputDir + output;
     }

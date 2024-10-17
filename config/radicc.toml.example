@@ -1,6 +1,6 @@
 # vim: ft=toml
 
-[karin] # *1
+["宮本佳林の雑談ラジオ"] # *1
 day = "Sunday" # string *2
 time = "0030" # string *3
 duration = 30 # int *4
@@ -18,7 +18,7 @@ output = "bayじゃないか-{yyyyMMdd}.m4a" # string
 personality = "WEST." # string
 organize = "bayじゃないか" # string
 
-# *1 セクション名に日本語が混じっていると実行できないようです．
+# *1 日本語表記の場合は""で囲んでください．実行時も radicc -t "日本語名" となります．
 # *2 曜日を指定します．実行時点から最も最近の日付が指定されます．
 # *3 "0030" のようにstring型として利用します．
 # *4 番組の長さです．分単位のint型で記述します．
