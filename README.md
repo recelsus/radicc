@@ -42,6 +42,7 @@
 ```bash
 RADIKO_USER=youremail@yourdomain.ch
 RADIKO_PASS=yourpassword
+OUTPUT_DIR="$HOME/Radiko"
 ```
 
 ### radicc.toml

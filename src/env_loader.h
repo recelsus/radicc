@@ -7,6 +7,6 @@ bool fileExists(const std::string& path);
 std::string getConfigPathForEnv(const std::string& filename);
 void loadEnvFile(const std::string& filepath);
 void loadEnvFromFile();
-bool checkRadikoCredentials(std::string& radikoUser, std::string& radikoPass);
+bool checkRadikoCredentials(std::string& radikoUser, std::string& radikoPass, std::string& outputDir);
 
 #endif

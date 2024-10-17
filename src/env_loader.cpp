@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <sys/stat.h>
+#include <algorithm>
 
 bool fileExists(const std::string& path) {
     struct stat buffer;
@@ -63,9 +64,28 @@ void loadEnvFromFile() {
     }
 }
 
-bool checkRadikoCredentials(std::string& radikoUser, std::string& radikoPass) {
+bool checkRadikoCredentials(std::string& radikoUser, std::string& radikoPass, std::string& outputDir) {
     const char* user = std::getenv("RADIKO_USER");
     const char* pass = std::getenv("RADIKO_PASS");
+
+    const char* outputBase= std::getenv("OUTPUT_DIR");
+    std::string homeDir = std::getenv("HOME");
+
+    if (outputBase) {
+      outputDir = std::string(outputBase);
+      outputDir.erase(std::remove(outputDir.begin(), outputDir.end(), '\"'), outputDir.end());
+      
+      size_t pos = outputDir.find("$HOME");
+      if (pos != std::string::npos) {
+        outputDir.replace(pos, 5, homeDir);
+      }
+
+      if (outputDir.back() != '/') {
+        outputDir += '/';
+      }
+    } else {
+      outputDir = "./";
+    }
 
     if (user && pass) {
         radikoUser = user;

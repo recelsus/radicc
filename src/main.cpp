@@ -80,7 +80,9 @@ int main(int argc, char* argv[]) {
     loadEnvFromFile();
 
     std::string radikoUser, radikoPass;
-    if (!checkRadikoCredentials(radikoUser, radikoPass)) {
+    std::string outputDir;
+
+    if (!checkRadikoCredentials(radikoUser, radikoPass, outputDir)) {
       std::cerr << "No Radiko credentials found. Proceeding without login." << std::endl;
     }
 
@@ -104,7 +106,7 @@ int main(int argc, char* argv[]) {
         printErrorAndExit("Authorization failed.");
     }
 
-    if (!recordRadiko(station_id, startTime, endTime, output, authtoken, personality, organize)) {
+    if (!recordRadiko(station_id, startTime, endTime, output, authtoken, personality, organize, outputDir)) {
         printErrorAndExit("Failed to record the broadcast.");
     }
 

@@ -1,15 +1,15 @@
 # vim: ft=toml
 
-[宮本佳林の雑談ラジオ]
-day = "Sunday" # string *1
-time = "0030" # string *2
-duration = 30 # int *3
+[karin] # *1
+day = "Sunday" # string *2
+time = "0030" # string *3
+duration = 30 # int *4
 station = "JORF" # string
-output = "宮本佳林の雑談ラジオ-{yyyyMMdd, 1}.m4a" # string *4
+output = "宮本佳林の雑談ラジオ-{yyyyMMdd, 1}.m4a" # string *5
 personality = "宮本佳林" # string
 organize = "宮本佳林の雑談ラジオ" # string
 
-[bayじゃないか]
+[west]
 day = "Saturday"
 time = "2330" # string
 duration = 30 # int
@@ -18,10 +18,11 @@ output = "bayじゃないか-{yyyyMMdd}.m4a" # string
 personality = "WEST." # string
 organize = "bayじゃないか" # string
 
-# *1 曜日を指定します．実行時点から最も最近の日付が指定されます．
-# *2 "0030" のようにstring型として利用します．
-# *3 番組の長さです．分単位のint型で記述します．
-# *4 ファイル出力された際のファイル名になります．{yyyyMMdd} のように記述した場合 *1で決定した日付のyyyyMMddに置換されます．
+# *1 セクション名に日本語が混じっていると実行できないようです．
+# *2 曜日を指定します．実行時点から最も最近の日付が指定されます．
+# *3 "0030" のようにstring型として利用します．
+# *4 番組の長さです．分単位のint型で記述します．
+# *5 ファイル出力された際のファイル名になります．{yyyyMMdd} のように記述した場合 *1で決定した日付のyyyyMMddに置換されます．
 #    また, {yyyyMMdd, 1}のように記述することで1日前の日付に変更できます．「土曜24:30」のような本来なら「日曜00:30」扱いの番組に対応するためです．
 
 # 具体的な日付の指定や月単位などはcrontabなどの外部から行います．
