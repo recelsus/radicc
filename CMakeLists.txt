@@ -1,3 +1,5 @@
+# vim ft=cmake
+
 # CMake minimum version required
 cmake_minimum_required(VERSION 3.10)
 
@@ -66,4 +68,3 @@ endif()
 
 # Additional compiler flags, if needed (optional)
 # target_compile_options(radicc PRIVATE -Wall -Wextra -pedantic)
-

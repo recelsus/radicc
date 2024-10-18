@@ -27,10 +27,11 @@ void validateVariables(const std::string& station_id, const std::string& startTi
 
 int main(int argc, char* argv[]) {
   std::string target, url, station_id, output, personality, weekday, organize;
+  bool dryrun = false;
   int duration = 0;
   std::array<std::string, 3> datetime = { "", "", "" };
 
-  parseArguments(argc, argv, target, url, duration, output, weekday, personality);
+  parseArguments(argc, argv, target, url, duration, output, weekday, personality, dryrun);
 
   bool hasValidConfig = false;
 
@@ -102,12 +103,20 @@ int main(int argc, char* argv[]) {
     std::cerr << "No Radiko credentials provied, proceeding without Radiko Premium access." << std::endl;
   }
 
-  if (!authorizeRadiko(authtoken, session_id)) {
-    printErrorAndExit("Authorization failed.");
-  }
+  if (dryrun == false) {
+    if (!authorizeRadiko(authtoken, session_id)) {
+      printErrorAndExit("Authorization failed.");
+    }
 
-  if (!recordRadiko(station_id, startTime, endTime, output, authtoken, personality, organize, outputDir)) {
-    printErrorAndExit("Failed to record the broadcast.");
+    if (!recordRadiko(station_id, startTime, endTime, output, authtoken, personality, organize, outputDir)) {
+      printErrorAndExit("Failed to record the broadcast.");
+    }
+
+    std::string session;
+    logoutFromRadiko(session);
+
+  } else if (dryrun == true) {
+    std::cout << "--dry-run was specified, not execute." << std::endl;
   }
 
   std::cout << std::endl;
@@ -117,11 +126,9 @@ int main(int argc, char* argv[]) {
   std::cout << "Output File: " << output << std::endl;
   std::cout << "Personality: " << personality << std::endl;
   std::cout << "Organize: " << organize << std::endl;
+  std::cout << std::endl;
 
   std::cout << "Recording completed successfully.\n";
-
-  std::string session;
-  logoutFromRadiko(session);
 
   return 0;
 }

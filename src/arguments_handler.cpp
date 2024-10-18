@@ -10,7 +10,8 @@ void parseArguments(
     int& duration,
     std::string& output,
     std::string& weekday,
-    std::string& personality
+    std::string& personality,
+    bool& dryrun
 ) {
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
@@ -32,6 +33,9 @@ void parseArguments(
         
     } else if ((arg == "--personality" || arg == "-p") && i + 1 < argc) {
       personality = argv[++i];
+
+    } else if (arg == "--dry-run") {
+      dryrun = true;
 
     } else {
       std::cerr << "Invalid argument: " << arg << std::endl;

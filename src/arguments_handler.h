@@ -11,7 +11,8 @@ void parseArguments(
     int& duration, 
     std::string& output,
     std::string& weekday,
-    std::string& personality
+    std::string& personality,
+    bool& dryrun
 );
 
 #endif
