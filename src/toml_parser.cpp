@@ -37,6 +37,7 @@ std::string getConfigPath(const std::string& filename) {
 std::string toLower(const std::string& str) {
   std::string lowerStr = str;
   std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
+  
   return lowerStr;
 }
 
@@ -57,7 +58,7 @@ std::string getLatestDateForDay(const std::string& day) {
   std::tm* t = std::localtime(&now);
   int today = t->tm_wday;
 
-  int daysBack = (today - dayMap[day] + 7) % 7;
+  int daysBack = (today - dayMap[lowerDay] + 7) % 7;
   if (daysBack == 0) daysBack = 7;
 
   t->tm_mday -= daysBack;
