@@ -26,12 +26,11 @@ void validateVariables(const std::string& station_id, const std::string& startTi
 }
 
 int main(int argc, char* argv[]) {
-    std::string target, url, station_id, output;
-    std::string personality, organize;
+    std::string target, url, station_id, output, personality, weekday, organize;
     int duration = 0;
     std::array<std::string, 3> datetime = { "", "", "" };
 
-    parseArguments(argc, argv, target, url, duration, output);
+    parseArguments(argc, argv, target, url, duration, output, weekday, personality);
 
     bool hasValidConfig = false;
 
@@ -41,11 +40,12 @@ int main(int argc, char* argv[]) {
         if(!config.empty()) {
           hasValidConfig = true;
           station_id = config["station"];
-          std::string day = config["day"];
+          std::string day = weekday.empty() ? config["day"] : weekday;
           std::string time = config["time"];
           output = output.empty() ? config["output"] : output;
           duration = (duration == 0) ? std::stoi(config["duration"]) : duration;
-          personality = config.count("personality") ? config["personality"] : "";
+          personality = !personality.empty() ? personality : (config.count("personality") ? config["personality"] : "");
+
           organize = config.count("organize") ? config["organize"] : "";
 
           std::string targetDate = getLatestDateForDay(day);

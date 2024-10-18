@@ -1,3 +1,4 @@
+#include "radiko_recorder.h"
 #include "base64.hpp"
 #include <iostream>
 #include <sstream>

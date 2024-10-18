@@ -34,13 +34,22 @@ std::string getConfigPath(const std::string& filename) {
     return config_path + "/" + filename;
 }
 
+std::string toLower(const std::string& str) {
+  std::string lowerStr = str;
+  std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
+  return lowerStr;
+}
+
 std::string getLatestDateForDay(const std::string& day) {
     std::map<std::string, int> dayMap = {
-        {"Sunday", 0}, {"Monday", 1}, {"Tuesday", 2},
-        {"Wednesday", 3}, {"Thursday", 4}, {"Friday", 5}, {"Saturday", 6}
+        {"sunday", 0}, {"monday", 1}, {"tuesday", 2},
+        {"wednesday", 3}, {"thursday", 4}, {"friday", 5}, {"saturday", 6},
+        {"sun", 0}, {"mon", 1}, {"tue", 2}, {"wed", 3}, {"thu", 4}, {"fri", 5}, {"sat", 6}
     };
 
-    if (dayMap.find(day) == dayMap.end()) {
+    std::string lowerDay = toLower(day);
+
+    if (dayMap.find(lowerDay) == dayMap.end()) {
         throw std::invalid_argument("Invalid day: " + day);
     }
 
