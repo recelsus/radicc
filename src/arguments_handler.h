@@ -3,14 +3,16 @@
 
 #include <string>
 
-void parseArguments(int argc,
-                    char* argv[], 
-                    std::string& target,
-                    std::string& url, 
-                    int& duration, 
-                    std::string& output,
-                    std::string& weekday,
-                    std::string& personality);
+void parseArguments(
+    int argc,
+    char* argv[], 
+    std::string& target,
+    std::string& url, 
+    int& duration, 
+    std::string& output,
+    std::string& weekday,
+    std::string& personality
+);
 
 #endif
 
