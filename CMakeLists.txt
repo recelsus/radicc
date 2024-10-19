@@ -19,6 +19,7 @@ add_executable(radicc
     src/env_loader.cpp
     src/toml_parser.cpp
     src/arguments_handler.cpp
+    src/list_config.cpp
 )
 
 # Include directories for header files

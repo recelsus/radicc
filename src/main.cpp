@@ -9,6 +9,7 @@
 #include "env_loader.h"
 #include "arguments_handler.h"
 #include "radiko_recorder.h"
+#include "list_config.h"
 
 const std::string APP_NAME = "radicc";
 
@@ -26,6 +27,19 @@ void validateVariables(const std::string& station_id, const std::string& startTi
 }
 
 int main(int argc, char* argv[]) {
+
+  if (argc < 2) {
+    std::cerr << "Usage: radicc [options] | list" << std::endl;
+    return 1;
+  }
+
+  std::string firstArg = argv[1];
+  
+  if (firstArg == "list") {
+    viewTomlConfigLists();
+    return 0;
+  }
+
   std::string target, url, station_id, output, personality, weekday, organize;
   bool dryrun = false;
   int duration = 0;
