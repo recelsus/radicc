@@ -59,7 +59,7 @@ std::string getLatestDateForDay(const std::string& day) {
   int today = t->tm_wday;
 
   int daysBack = (today - dayMap[lowerDay] + 7) % 7;
-  if (daysBack == 0) daysBack = 7;
+  if (daysBack == 0) daysBack = 0;
 
   t->tm_mday -= daysBack;
   std::mktime(t);
