@@ -1,0 +1,16 @@
+# vim: ft=toml
+
+["宮本佳林の雑談ラジオ"] # *1
+id = "karin-zatsudan" # unique id (optional)
+title = "宮本佳林の雑談ラジオ" # title (= section name if omitted)
+station = "JORF"
+date_offset = 1 # file date offset (days) for filename only
+
+["Aぇ! group小島健のラジキング"] # *1
+id = "koji-radiking"
+title = "Aぇ! group小島健のラジキング"
+station = "FMO"
+dir = "Aぇ! group小島健のラジキング" # ディレクトリ名を変更したい場合のみ
+filename = "小島健のラジキング"      # 基本は <title>-YYYYMMDD.m4a が自動
+img = "https://..."           # カバー画像URL（取得できない場合のみ使用）
+pfm = "小島健"           # パーソナリティ（取得できない場合のみ使用）
