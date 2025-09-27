@@ -9,6 +9,7 @@
 #include <array>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 #include <string>
 #include <tuple>
 
