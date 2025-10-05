@@ -117,6 +117,7 @@ std::map<std::string, std::string> parse_toml_by_id(const std::string& id) {
             if (const auto* sv = value.as_string()) result.emplace(std::string(key), sv->get());
             else if (const auto* iv = value.as_integer()) result.emplace(std::string(key), std::to_string(iv->get()));
           }
+          if (!result.count("title")) result.emplace("title", sec_name);
           return result;
         }
       }

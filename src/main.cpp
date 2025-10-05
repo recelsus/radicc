@@ -19,6 +19,10 @@ void print_error_and_exit(const std::string& message) {
   std::exit(1);
 }
 
+bool has_datetime_components(const std::array<std::string, 3>& datetime) {
+  return datetime[0].size() == 4 && datetime[1].size() == 4 && datetime[2].size() == 6;
+}
+
 void validate_variables(const std::string& station_id, const std::string& start_time,
                         const std::string& end_time, const std::string& filename, int duration) {
   if (station_id.empty()) print_error_and_exit("Station ID is required.");
@@ -158,6 +162,10 @@ int main(int argc, char* argv[]) {
   // url is retained for future use; not used for config selection or recording yet.
 
   if (!has_valid_config) print_error_and_exit("Missing required configuration. Provide either -t <section> or -i <id>.");
+
+  if (!has_datetime_components(datetime)) {
+    print_error_and_exit("Failed to resolve broadcast datetime. Check network connectivity or schedule data.");
+  }
 
   std::string start_time = generate_14digit_datetime(datetime, 0);
   std::string end_time = generate_14digit_datetime(datetime, duration);
