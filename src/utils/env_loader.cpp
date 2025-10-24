@@ -42,11 +42,17 @@ void load_env_from_file() {
   std::string env_path = get_config_path_for_env("env");
   std::string dotenv_path = get_config_path_for_env(".env");
   struct stat st;
+  const bool suppress_logs = std::getenv("RADICC_SUPPRESS_ENV_LOG") != nullptr;
+
   if (stat(env_path.c_str(), &st) == 0) {
-    std::cout << "Loading from env file: " << env_path << std::endl;
+    if (!suppress_logs) {
+      std::cerr << "Loading from env file: " << env_path << std::endl;
+    }
     load_env_file(env_path);
   } else if (stat(dotenv_path.c_str(), &st) == 0) {
-    std::cout << "Loading from .env file: " << dotenv_path << std::endl;
+    if (!suppress_logs) {
+      std::cerr << "Loading from .env file: " << dotenv_path << std::endl;
+    }
     load_env_file(dotenv_path);
   } else {
     std::cerr << "Error: Neither env nor .env file found.\n";
@@ -72,4 +78,3 @@ bool check_radiko_credentials(std::string& radikoUser, std::string& radikoPass, 
 }
 
 } // namespace radicc
-

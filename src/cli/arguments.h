@@ -15,6 +15,7 @@ void parse_arguments(
     std::string& output,
     std::string& weekday,
     std::string& personality,
-    bool& dryrun);
+    bool& dryrun,
+    bool& json_output);
 
 } // namespace radicc

@@ -7,6 +7,8 @@
 #include "utils/date.h"
 #include "utils/env_loader.h"
 #include <array>
+#include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -30,6 +32,32 @@ void validate_variables(const std::string& station_id, const std::string& start_
   if (end_time.empty()) print_error_and_exit("End time is required.");
   if (duration == 0) print_error_and_exit("Duration must be greater than 0.");
 }
+
+std::string json_escape(const std::string& input) {
+  static constexpr char hex[] = "0123456789ABCDEF";
+  std::string escaped;
+  escaped.reserve(input.size() + 8);
+  for (unsigned char c : input) {
+    switch (c) {
+      case '\\': escaped += "\\\\"; break;
+      case '"': escaped += "\\\""; break;
+      case '\b': escaped += "\\b"; break;
+      case '\f': escaped += "\\f"; break;
+      case '\n': escaped += "\\n"; break;
+      case '\r': escaped += "\\r"; break;
+      case '\t': escaped += "\\t"; break;
+      default:
+        if (c < 0x20) {
+          escaped += "\\u00";
+          escaped.push_back(hex[c >> 4]);
+          escaped.push_back(hex[c & 0x0F]);
+        } else {
+          escaped.push_back(static_cast<char>(c));
+        }
+    }
+  }
+  return escaped;
+}
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -39,11 +67,12 @@ int main(int argc, char* argv[]) {
   std::string img_toml;        // fallback image from TOML (used only if no fetched image)
   std::string pfm_toml;        // fallback pfm from TOML (used only if no fetched pfm)
   bool dryrun = false;
+  bool json_output = false;
   int duration = 0;
   std::array<std::string, 3> datetime = {"", "", ""};
   int date_offset = 0; // days to subtract for filename date
 
-  parse_arguments(argc, argv, target, id, url, duration, filename, weekday, pfm, dryrun);
+  parse_arguments(argc, argv, target, id, url, duration, filename, weekday, pfm, dryrun, json_output);
 
   bool has_valid_config = false;
 
@@ -185,6 +214,14 @@ int main(int argc, char* argv[]) {
 
   validate_variables(station_id, start_time, end_time, filename, duration);
 
+  if (json_output) {
+#if defined(_WIN32)
+    _putenv_s("RADICC_SUPPRESS_ENV_LOG", "1");
+#else
+    setenv("RADICC_SUPPRESS_ENV_LOG", "1", 1);
+#endif
+  }
+
   load_env_from_file();
   std::string radiko_user, radiko_pass, output_dir;
   if (!check_radiko_credentials(radiko_user, radiko_pass, output_dir)) {
@@ -201,6 +238,9 @@ int main(int argc, char* argv[]) {
     std::cerr << "No Radiko credentials provied, proceeding without Radiko Premium access." << std::endl;
   }
 
+  const std::string output_path = dir.empty() ? (output_dir + filename) : (output_dir + dir + "/" + filename);
+  const std::filesystem::path absolute_output_path = std::filesystem::absolute(output_path);
+
   if (!dryrun) {
     if (!authorize_radiko(authtoken, session_id)) print_error_and_exit("Authorization failed.");
     if (!record_radiko(station_id, start_time, end_time, filename, authtoken, pfm, title, dir, output_dir, image_url)) {
@@ -209,18 +249,55 @@ int main(int argc, char* argv[]) {
     std::string session;
     logout_from_radiko(session);
   } else {
-    std::cout << "--dry-run was specified, not execute." << std::endl;
+    std::string notice = "--dry-run was specified, not execute.";
+    if (json_output) {
+      std::cerr << notice << std::endl;
+    } else {
+      std::cout << notice << std::endl;
+    }
   }
 
-  std::cout << "\n";
-  std::cout << "ID: " << (id.empty() ? target : id) << "\n";
-  std::cout << "Station: " << station_id << "\n";
-  std::cout << "Time: " << start_time << " - " << end_time << "\n";
-  std::cout << "Duration: " << duration << " minutes\n";
-  std::cout << "Output File: " << filename << "\n";
-  std::cout << "pfm: " << pfm << "\n";
-  std::cout << "dir: " << dir << "\n\n";
-  if (!image_url.empty()) std::cout << "(image url)   " << image_url << "\n";
-  std::cout << "Recording completed successfully.\n";
+  const std::string resolved_id = id.empty() ? target : id;
+  const std::string absolute_path_str = absolute_output_path.string();
+  const std::string directory_path = dir.empty()
+      ? output_dir
+      : output_dir + dir + "/";
+
+  const std::string start_date = start_time.size() >= 8 ? start_time.substr(0, 8) : std::string();
+
+  if (json_output) {
+    std::ostringstream json;
+    json << '{'
+         << "\"id\":\"" << json_escape(resolved_id) << "\",";
+    json << "\"station_id\":\"" << json_escape(station_id) << "\",";
+    json << "\"start_time\":\"" << json_escape(start_time) << "\",";
+    json << "\"end_time\":\"" << json_escape(end_time) << "\",";
+    json << "\"duration_minutes\":" << duration << ',';
+    json << "\"output_file\":\"" << json_escape(filename) << "\",";
+    json << "\"filepath\":\"" << json_escape(absolute_path_str) << "\",";
+    json << "\"title\":\"" << json_escape(title) << "\",";
+    json << "\"dir\":\"" << json_escape(dir) << "\",";
+    json << "\"directory\":\"" << json_escape(directory_path) << "\",";
+    json << "\"pfm\":\"" << json_escape(pfm) << "\",";
+    json << "\"image_url\":\"" << json_escape(image_url) << "\",";
+    json << "\"date\":\"" << json_escape(start_date) << "\",";
+    json << "\"dry_run\":" << (dryrun ? "true" : "false")
+         << '}';
+    std::cout << json.str() << std::endl;
+  } else {
+    std::cout << "\n";
+    std::cout << "ID: " << resolved_id << "\n";
+    std::cout << "Station: " << station_id << "\n";
+    std::cout << "Time: " << start_time << " - " << end_time << "\n";
+    std::cout << "Duration: " << duration << " minutes\n";
+    std::cout << "Output File: " << filename << "\n";
+    std::cout << "pfm: " << pfm << "\n";
+    if (!dir.empty()) {
+      std::cout << "dir: " << dir << "\n";
+    }
+    std::cout << "Directory: " << directory_path << "\n\n";
+    if (!image_url.empty()) std::cout << "(image url)   " << image_url << "\n";
+    std::cout << "Recording completed successfully.\n";
+  }
   return 0;
 }

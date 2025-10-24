@@ -15,7 +15,8 @@ void parse_arguments(
     std::string& output,
     std::string& weekday,
     std::string& personality,
-    bool& dryrun) {
+    bool& dryrun,
+    bool& json_output) {
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
     if ((arg == "--target" || arg == "-t") && i + 1 < argc) {
@@ -34,6 +35,8 @@ void parse_arguments(
       personality = argv[++i];
     } else if (arg == "--dry-run") {
       dryrun = true;
+    } else if (arg == "--json") {
+      json_output = true;
     } else {
       std::cerr << "Invalid argument: " << arg << std::endl;
       std::exit(1);
