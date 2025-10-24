@@ -225,7 +225,9 @@ int main(int argc, char* argv[]) {
   load_env_from_file();
   std::string radiko_user, radiko_pass, output_dir;
   if (!check_radiko_credentials(radiko_user, radiko_pass, output_dir)) {
-    std::cerr << "No Radiko credentials found. Proceeding without login." << std::endl;
+    if (!json_output) {
+      std::cerr << "No Radiko credentials found. Proceeding without login." << std::endl;
+    }
   }
 
   // filename already constructed; no placeholder replacement needed
@@ -233,9 +235,13 @@ int main(int argc, char* argv[]) {
   bool logged_in = false;
   if (!radiko_user.empty() && !radiko_pass.empty()) {
     logged_in = login_to_radiko(radiko_user, radiko_pass, session_id);
-    if (!logged_in) std::cerr << "Warning: Login failed, proceeding without Radiko Premium access." << std::endl;
+    if (!logged_in && !json_output) {
+      std::cerr << "Warning: Login failed, proceeding without Radiko Premium access." << std::endl;
+    }
   } else {
-    std::cerr << "No Radiko credentials provied, proceeding without Radiko Premium access." << std::endl;
+    if (!json_output) {
+      std::cerr << "No Radiko credentials provied, proceeding without Radiko Premium access." << std::endl;
+    }
   }
 
   const std::string output_path = dir.empty() ? (output_dir + filename) : (output_dir + dir + "/" + filename);
@@ -250,9 +256,7 @@ int main(int argc, char* argv[]) {
     logout_from_radiko(session);
   } else {
     std::string notice = "--dry-run was specified, not execute.";
-    if (json_output) {
-      std::cerr << notice << std::endl;
-    } else {
+    if (!json_output) {
       std::cout << notice << std::endl;
     }
   }
