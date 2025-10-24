@@ -59,21 +59,47 @@ void load_env_from_file() {
   }
 }
 
-bool check_radiko_credentials(std::string& radikoUser, std::string& radikoPass, std::string& outputDir) {
+bool check_radiko_credentials(std::string& radiko_user, std::string& radiko_pass, std::string& output_dir) {
+  const char* home = std::getenv("HOME");
+  const auto expand_path = [&](const std::string& raw) -> std::string {
+    std::string expanded = raw;
+    expanded.erase(std::remove(expanded.begin(), expanded.end(), '\"'), expanded.end());
+
+    if (home) {
+      size_t pos = expanded.find("$HOME");
+      if (pos != std::string::npos) expanded.replace(pos, 5, home);
+      if (!expanded.empty() && expanded.front() == '~') {
+        expanded.replace(0, 1, home);
+      }
+    }
+
+    if (!expanded.empty() && expanded.back() != '/') {
+      expanded += '/';
+    }
+
+    return expanded;
+  };
+
+  const char* radicc_output = std::getenv("RADICC_OUTPUT_DIR");
+  const char* legacy_output = std::getenv("OUTPUT_DIR");
+  if (radicc_output && *radicc_output) {
+    output_dir = expand_path(radicc_output);
+  } else if (legacy_output && *legacy_output) {
+    output_dir = expand_path(legacy_output);
+  } else {
+    output_dir = "./";
+  }
+
   const char* user = std::getenv("RADIKO_USER");
   const char* pass = std::getenv("RADIKO_PASS");
-  const char* outputBase = std::getenv("OUTPUT_DIR");
-  std::string homeDir = std::getenv("HOME");
-  if (outputBase) {
-    outputDir = std::string(outputBase);
-    outputDir.erase(std::remove(outputDir.begin(), outputDir.end(), '\"'), outputDir.end());
-    size_t pos = outputDir.find("$HOME");
-    if (pos != std::string::npos) outputDir.replace(pos, 5, homeDir);
-    if (outputDir.back() != '/') outputDir += '/';
-  } else {
-    outputDir = "./";
+  if (user && *user && pass && *pass) {
+    radiko_user = user;
+    radiko_pass = pass;
+    return true;
   }
-  if (user && pass) { radikoUser = user; radikoPass = pass; return true; }
+
+  radiko_user.clear();
+  radiko_pass.clear();
   return false;
 }
 
