@@ -43,19 +43,26 @@ void load_env_from_file() {
   std::string dotenv_path = get_config_path_for_env(".env");
   struct stat st;
   const bool suppress_logs = std::getenv("RADICC_SUPPRESS_ENV_LOG") != nullptr;
+  bool loaded = false;
 
   if (stat(env_path.c_str(), &st) == 0) {
     if (!suppress_logs) {
       std::cerr << "Loading from env file: " << env_path << std::endl;
     }
     load_env_file(env_path);
-  } else if (stat(dotenv_path.c_str(), &st) == 0) {
+    loaded = true;
+  }
+
+  if (stat(dotenv_path.c_str(), &st) == 0) {
     if (!suppress_logs) {
       std::cerr << "Loading from .env file: " << dotenv_path << std::endl;
     }
     load_env_file(dotenv_path);
-  } else {
-    std::cerr << "Error: Neither env nor .env file found.\n";
+    loaded = true;
+  }
+
+  if (!loaded && !suppress_logs) {
+    std::cerr << "Note: No env file found; relying on environment variables only.\n";
   }
 }
 
