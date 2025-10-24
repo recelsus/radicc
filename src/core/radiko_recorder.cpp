@@ -9,6 +9,7 @@ extern "C" {
 #include <libavutil/avutil.h>
 #include <libavutil/opt.h>
 #include <libavutil/dict.h>
+#include <libavutil/error.h>
 }
 #endif
 #include <cstdlib>
@@ -21,6 +22,11 @@ namespace radicc {
 static std::string generate_partial_key(const std::string& authkey, int keyoffset, int keylength) {
   std::string keySegment = authkey.substr(keyoffset, keylength);
   return base64::to_base64(keySegment);
+}
+
+static std::string av_error_to_string(int errnum) {
+  char buf[AV_ERROR_MAX_STRING_SIZE] = {0};
+  return av_make_error_string(buf, sizeof(buf), errnum);
 }
 
 bool login_to_radiko(const std::string& mail, const std::string& password, std::string& session_id) {
@@ -128,27 +134,43 @@ bool record_radiko(const std::string& station_id, const std::string& fromtime,
     std::string url = std::string("https://radiko.jp/v2/api/ts/playlist.m3u8?station_id=") + station_id + "&ft=" + fromtime + "&to=" + totime;
     std::string headers = std::string("X-Radiko-Authtoken: ") + authtoken + "\r\n";
     av_dict_set(&opts, "headers", headers.c_str(), 0);
-    if (avformat_open_input(&in_fmt, url.c_str(), nullptr, &opts) < 0) { av_dict_free(&opts); return false; }
+    int rc = avformat_open_input(&in_fmt, url.c_str(), nullptr, &opts);
+    if (rc < 0) {
+      av_dict_free(&opts);
+      std::cerr << "libav: avformat_open_input failed: " << av_error_to_string(rc) << "\n";
+      return false;
+    }
     av_dict_free(&opts);
-    if (avformat_find_stream_info(in_fmt, nullptr) < 0) { avformat_close_input(&in_fmt); return false; }
+    rc = avformat_find_stream_info(in_fmt, nullptr);
+    if (rc < 0) {
+      std::cerr << "libav: avformat_find_stream_info failed: " << av_error_to_string(rc) << "\n";
+      avformat_close_input(&in_fmt);
+      return false;
+    }
     for (unsigned i = 0; i < in_fmt->nb_streams; ++i) {
       if (in_fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) { audio_stream = (int)i; break; }
     }
     if (audio_stream < 0) { avformat_close_input(&in_fmt); return false; }
 
-    if (avformat_alloc_output_context2(&out_fmt, nullptr, "mp4", outputPath.c_str()) < 0) {
-      avformat_close_input(&in_fmt); return false; }
+    rc = avformat_alloc_output_context2(&out_fmt, nullptr, "mp4", outputPath.c_str());
+    if (rc < 0) {
+      std::cerr << "libav: avformat_alloc_output_context2 failed: " << av_error_to_string(rc) << "\n";
+      avformat_close_input(&in_fmt);
+      return false; }
 
     AVStream* in_a = in_fmt->streams[audio_stream];
     AVStream* out_a = avformat_new_stream(out_fmt, nullptr);
-    if (!out_a) { avformat_close_input(&in_fmt); avformat_free_context(out_fmt); return false; }
-    if (avcodec_parameters_copy(out_a->codecpar, in_a->codecpar) < 0) { avformat_close_input(&in_fmt); avformat_free_context(out_fmt); return false; }
+    if (!out_a) { std::cerr << "libav: avformat_new_stream (audio) returned null\n"; avformat_close_input(&in_fmt); avformat_free_context(out_fmt); return false; }
+    rc = avcodec_parameters_copy(out_a->codecpar, in_a->codecpar);
+    if (rc < 0) {
+      std::cerr << "libav: avcodec_parameters_copy failed: " << av_error_to_string(rc) << "\n";
+      avformat_close_input(&in_fmt); avformat_free_context(out_fmt); return false; }
     out_a->codecpar->codec_tag = 0; // let muxer decide
 
     // Optional: open image input and prepare attached_pic stream
     AVStream* out_img = nullptr;
     if (!image_url.empty()) {
-      if (avformat_open_input(&img_fmt, image_url.c_str(), nullptr, nullptr) == 0) {
+      if ((rc = avformat_open_input(&img_fmt, image_url.c_str(), nullptr, nullptr)) == 0) {
         if (avformat_find_stream_info(img_fmt, nullptr) >= 0) {
           for (unsigned i = 0; i < img_fmt->nb_streams; ++i) {
             if (img_fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) { img_stream = (int)i; break; }
@@ -164,6 +186,8 @@ bool record_radiko(const std::string& station_id, const std::string& fromtime,
             }
           }
         }
+      } else {
+        std::cerr << "libav: avformat_open_input(image) failed: " << av_error_to_string(rc) << " (non-fatal)\n";
       }
       // If any of above steps failed, we silently skip image embedding
     }
@@ -189,7 +213,9 @@ bool record_radiko(const std::string& station_id, const std::string& fromtime,
         avformat_close_input(&in_fmt); avformat_free_context(out_fmt); return false; }
     }
 
-    if (avformat_write_header(out_fmt, nullptr) < 0) {
+    rc = avformat_write_header(out_fmt, nullptr);
+    if (rc < 0) {
+      std::cerr << "libav: avformat_write_header failed: " << av_error_to_string(rc) << "\n";
       if (!(out_fmt->oformat->flags & AVFMT_NOFILE) && out_fmt->pb) avio_closep(&out_fmt->pb);
       if (bsf) av_bsf_free(&bsf);
       if (img_fmt) avformat_close_input(&img_fmt);
@@ -226,7 +252,6 @@ bool record_radiko(const std::string& station_id, const std::string& fromtime,
       avformat_close_input(&in_fmt); avformat_free_context(out_fmt);
       return false;
     }
-    int rc = 0;
     while ((rc = av_read_frame(in_fmt, pkt)) >= 0) {
       if (pkt->stream_index != audio_stream) { av_packet_unref(pkt); continue; }
       if (bsf) {
@@ -245,6 +270,9 @@ bool record_radiko(const std::string& station_id, const std::string& fromtime,
         av_interleaved_write_frame(out_fmt, pkt);
         av_packet_unref(pkt);
       }
+    }
+    if (rc < 0 && rc != AVERROR_EOF) {
+      std::cerr << "libav: av_read_frame failed: " << av_error_to_string(rc) << "\n";
     }
 
     av_write_trailer(out_fmt);
