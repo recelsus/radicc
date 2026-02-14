@@ -50,23 +50,6 @@ target_compile_definitions(radicc PRIVATE
   RADICC_BUILD_TYPE=\"${CMAKE_BUILD_TYPE}\"
 )
 
-# Create/refresh a top-level compile_commands.json symlink (or copy on Windows)
-if (EXISTS ${CMAKE_BINARY_DIR}/compile_commands.json)
-  if (WIN32)
-    add_custom_target(link_compile_commands ALL
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-              ${CMAKE_BINARY_DIR}/compile_commands.json
-              ${CMAKE_SOURCE_DIR}/compile_commands.json
-      COMMENT "Copy compile_commands.json to project root for clangd")
-  else()
-    add_custom_target(link_compile_commands ALL
-      COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_SOURCE_DIR}/compile_commands.json
-      COMMAND ${CMAKE_COMMAND} -E create_symlink
-              ${CMAKE_BINARY_DIR}/compile_commands.json
-              ${CMAKE_SOURCE_DIR}/compile_commands.json
-      COMMENT "Symlink compile_commands.json to project root for clangd")
-  endif()
-endif()
 
 # Install rules
 include(GNUInstallDirs)
