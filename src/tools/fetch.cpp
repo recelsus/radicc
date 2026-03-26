@@ -3,24 +3,16 @@
 //   radicc_fetch <url> [--title "Exact Title"]
 // Prints parsed values to stdout (JSON-ish), without recording.
 
-#include <cstdio>
+#include "core/radiko_http.h"
+
 #include <iostream>
 #include <optional>
 #include <regex>
-#include <sstream>
 #include <string>
-#include <vector>
 
 static std::string fetch_text(const std::string& url) {
-  std::ostringstream cmd;
-  cmd << "curl --silent --fail \"" << url << "\"";
-  std::string result;
-  FILE* pipe = popen(cmd.str().c_str(), "r");
-  if (!pipe) return result;
-  char buf[4096];
-  while (fgets(buf, sizeof(buf), pipe)) result.append(buf);
-  pclose(pipe);
-  return result;
+  auto result = radicc::curl_get_text(url);
+  return result ? *result : std::string();
 }
 
 struct Prog { std::string id, title, pfm, ft, to, img; };

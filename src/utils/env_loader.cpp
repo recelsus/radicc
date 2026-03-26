@@ -7,11 +7,6 @@
 
 namespace radicc {
 
-bool file_exists(const std::string& path) {
-  struct stat buffer;
-  return (stat(path.c_str(), &buffer) == 0);
-}
-
 std::string get_config_path_for_env(const std::string& filename) {
   const char* xdg_config_home = std::getenv("XDG_CONFIG_HOME");
   std::string config_path;

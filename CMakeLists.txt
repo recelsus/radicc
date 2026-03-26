@@ -8,21 +8,47 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(radicc
-  src/main.cpp
+add_library(radicc_utils
   src/cli/arguments.cpp
-  src/core/url_parser.cpp
-  src/core/radiko_recorder.cpp
-  src/core/radiko_programs.cpp
-  src/core/toml_parser.cpp
+  src/core/radiko_http.cpp
   src/utils/date.cpp
   src/utils/env_loader.cpp
 )
+target_include_directories(radicc_utils PUBLIC
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/src
+)
 
+add_library(radicc_radiko
+  src/core/radiko_auth.cpp
+  src/core/radiko_stream.cpp
+  src/core/url_parser.cpp
+  src/core/radiko_programs.cpp
+  src/core/toml_parser.cpp
+)
+target_include_directories(radicc_radiko PUBLIC
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/src
+)
+target_link_libraries(radicc_radiko PUBLIC radicc_utils)
+
+add_library(radicc_recording
+  src/core/radiko_recorder.cpp
+)
+target_include_directories(radicc_recording PUBLIC
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/src
+)
+target_link_libraries(radicc_recording PUBLIC radicc_radiko)
+
+add_executable(radicc
+  src/main.cpp
+)
 target_include_directories(radicc PRIVATE
   ${CMAKE_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}/src
 )
+target_link_libraries(radicc PRIVATE radicc_recording)
 
 # Build metadata (similar to karing)
 execute_process(
@@ -58,7 +84,8 @@ install(FILES config/radicc.toml.example config/env.example DESTINATION ${CMAKE_
 add_executable(radicc_fetch
   src/tools/fetch.cpp
 )
-target_include_directories(radicc_fetch PRIVATE ${CMAKE_SOURCE_DIR})
+target_include_directories(radicc_fetch PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(radicc_fetch PRIVATE radicc_utils)
 option(RADICC_USE_LIBAV "Use FFmpeg libav* libraries (default ON)" ON)
 
 if (RADICC_USE_LIBAV)
@@ -72,8 +99,8 @@ if (RADICC_USE_LIBAV)
     message(FATAL_ERROR "libavformat/libavcodec/libavutil not found. Install FFmpeg dev packages or set -DRADICC_USE_LIBAV=OFF explicitly (not recommended).")
   endif()
   message(STATUS "libav* found; enabling library-based recorder (default)")
-  target_compile_definitions(radicc PRIVATE USE_LIBAV)
-  target_link_libraries(radicc PRIVATE PkgConfig::AVFORMAT PkgConfig::AVCODEC PkgConfig::AVUTIL)
+  target_compile_definitions(radicc_recording PRIVATE USE_LIBAV)
+  target_link_libraries(radicc_recording PRIVATE PkgConfig::AVFORMAT PkgConfig::AVCODEC PkgConfig::AVUTIL)
 else()
   message(FATAL_ERROR "CLI recorder has been deprecated. Build with RADICC_USE_LIBAV=ON (default).")
 endif()

@@ -1,6 +1,8 @@
 // karing-style: namespace, snake_case names, organized includes
 #include "cli/arguments.h"
+#include "core/radiko_auth.h"
 #include "core/radiko_recorder.h"
+#include "core/radiko_stream.h"
 #include "core/toml_parser.h"
 #include "core/url_parser.h"
 #include "core/radiko_programs.h"
@@ -8,6 +10,7 @@
 #include "utils/env_loader.h"
 #include <array>
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <iostream>
 #include <iomanip>
@@ -23,6 +26,29 @@ void print_error_and_exit(const std::string& message) {
 
 bool has_datetime_components(const std::array<std::string, 3>& datetime) {
   return datetime[0].size() == 4 && datetime[1].size() == 4 && datetime[2].size() == 6;
+}
+
+std::time_t to_time_utc_like(const std::string& yyyymmddhhmmss) {
+  if (yyyymmddhhmmss.size() != 14) return 0;
+  std::tm t{}; t.tm_isdst = -1;
+  int Y = std::stoi(yyyymmddhhmmss.substr(0,4));
+  int m = std::stoi(yyyymmddhhmmss.substr(4,2));
+  int d = std::stoi(yyyymmddhhmmss.substr(6,2));
+  int H = std::stoi(yyyymmddhhmmss.substr(8,2));
+  int M = std::stoi(yyyymmddhhmmss.substr(10,2));
+  int S = std::stoi(yyyymmddhhmmss.substr(12,2));
+  t.tm_year = Y - 1900; t.tm_mon = m - 1; t.tm_mday = d;
+  t.tm_hour = H; t.tm_min = M; t.tm_sec = S;
+  return std::mktime(&t);
+}
+
+int diff_minutes(const std::string& ft, const std::string& to) {
+  std::time_t t_ft = to_time_utc_like(ft);
+  std::time_t t_to = to_time_utc_like(to);
+  if (t_ft == 0 || t_to == 0) return 0;
+  double seconds = std::difftime(t_to, t_ft);
+  if (seconds <= 0) return 0;
+  return static_cast<int>(seconds / 60);
 }
 
 void validate_variables(const std::string& station_id, const std::string& start_time,
@@ -66,13 +92,13 @@ int main(int argc, char* argv[]) {
   std::string image_url;       // final image
   std::string img_toml;        // fallback image from TOML (used only if no fetched image)
   std::string pfm_toml;        // fallback pfm from TOML (used only if no fetched pfm)
-  bool dryrun = false;
+  bool fetch_only = false;
   bool json_output = false;
   int duration = 0;
   std::array<std::string, 3> datetime = {"", "", ""};
   int date_offset = 0; // days to subtract for filename date
 
-  parse_arguments(argc, argv, target, id, url, duration, filename, weekday, pfm, dryrun, json_output);
+  parse_arguments(argc, argv, target, id, url, duration, filename, weekday, pfm, fetch_only, json_output);
 
   bool has_valid_config = false;
 
@@ -112,11 +138,7 @@ int main(int argc, char* argv[]) {
     image_url = info->image_url;
     if (info->ft.size() == 14 && info->to.size() == 14) {
       datetime = { info->ft.substr(0,4), info->ft.substr(4,4), info->ft.substr(8) };
-      int sh = std::stoi(info->ft.substr(8,2));
-      int sm = std::stoi(info->ft.substr(10,2));
-      int eh = std::stoi(info->to.substr(8,2));
-      int em = std::stoi(info->to.substr(10,2));
-      int dmins = (eh*60 + em) - (sh*60 + sm);
+      int dmins = diff_minutes(info->ft, info->to);
       if (dmins > 0) duration = dmins;
     }
     has_valid_config = true;
@@ -169,12 +191,8 @@ int main(int argc, char* argv[]) {
         // Prefer fetched time/duration/personality
         if (info->ft.size() == 14 && info->to.size() == 14) {
           datetime = { info->ft.substr(0,4), info->ft.substr(4,4), info->ft.substr(8) };
-          int sh = std::stoi(info->ft.substr(8,2));
-          int sm = std::stoi(info->ft.substr(10,2));
-          int eh = std::stoi(info->to.substr(8,2));
-          int em = std::stoi(info->to.substr(10,2));
-          int d = (eh*60 + em) - (sh*60 + sm);
-          if (d > 0) duration = d;
+          int dmins = diff_minutes(info->ft, info->to);
+          if (dmins > 0) duration = dmins;
         }
         if (pfm.empty() && !info->pfm.empty()) pfm = info->pfm;
       }
@@ -231,11 +249,14 @@ int main(int argc, char* argv[]) {
   }
 
   // filename already constructed; no placeholder replacement needed
-  std::string authtoken, session_id;
-  bool logged_in = false;
+  std::string session_id;
+  bool is_areafree = false;
   if (!radiko_user.empty() && !radiko_pass.empty()) {
-    logged_in = login_to_radiko(radiko_user, radiko_pass, session_id);
-    if (!logged_in && !json_output) {
+    auto login = login_to_radiko(radiko_user, radiko_pass);
+    if (login) {
+      session_id = login->session_id;
+      is_areafree = login->is_areafree;
+    } else if (!json_output) {
       std::cerr << "Warning: Login failed, proceeding without Radiko Premium access." << std::endl;
     }
   } else {
@@ -247,15 +268,17 @@ int main(int argc, char* argv[]) {
   const std::string output_path = dir.empty() ? (output_dir + filename) : (output_dir + dir + "/" + filename);
   const std::filesystem::path absolute_output_path = std::filesystem::absolute(output_path);
 
-  if (!dryrun) {
-    if (!authorize_radiko(authtoken, session_id)) print_error_and_exit("Authorization failed.");
-    if (!record_radiko(station_id, start_time, end_time, filename, authtoken, pfm, title, dir, output_dir, image_url)) {
+  if (!fetch_only) {
+    auto auth_state = authorize_radiko(session_id);
+    if (!auth_state) print_error_and_exit("Authorization failed.");
+    auto stream_plan = build_timefree_stream_plan(station_id, start_time, end_time, is_areafree, *auth_state);
+    if (!stream_plan) print_error_and_exit("Failed to resolve timefree stream request.");
+    if (!record_radiko(*stream_plan, filename, pfm, title, dir, output_dir, image_url)) {
       print_error_and_exit("Failed to record the broadcast.");
     }
-    std::string session;
-    logout_from_radiko(session);
+    logout_from_radiko(session_id);
   } else {
-    std::string notice = "--dry-run was specified, not execute.";
+    std::string notice = "--fetch was specified, recording was skipped.";
     if (!json_output) {
       std::cout << notice << std::endl;
     }
@@ -285,7 +308,7 @@ int main(int argc, char* argv[]) {
     json << "\"pfm\":\"" << json_escape(pfm) << "\",";
     json << "\"image_url\":\"" << json_escape(image_url) << "\",";
     json << "\"date\":\"" << json_escape(start_date) << "\",";
-    json << "\"dry_run\":" << (dryrun ? "true" : "false")
+    json << "\"fetch_only\":" << (fetch_only ? "true" : "false")
          << '}';
     std::cout << json.str() << std::endl;
   } else {
@@ -301,7 +324,11 @@ int main(int argc, char* argv[]) {
     }
     std::cout << "Directory: " << directory_path << "\n\n";
     if (!image_url.empty()) std::cout << "(image url)   " << image_url << "\n";
-    std::cout << "Recording completed successfully.\n";
+    if (fetch_only) {
+      std::cout << "Fetch completed successfully.\n";
+    } else {
+      std::cout << "Recording completed successfully.\n";
+    }
   }
   return 0;
 }

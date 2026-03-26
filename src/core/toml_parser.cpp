@@ -1,12 +1,7 @@
 #include "core/toml_parser.h"
 #include "toml.hpp"
-#include <ctime>
-#include <iomanip>
 #include <iostream>
 #include <map>
-#include <regex>
-#include <sstream>
-#include <stdexcept>
 #include <sys/stat.h>
 
 namespace radicc {
@@ -26,48 +21,6 @@ std::string get_config_path(const std::string& filename) {
     return "";
   }
   return config_path + "/" + filename;
-}
-
-static std::string to_lower(const std::string& s) {
-  std::string out = s; std::transform(out.begin(), out.end(), out.begin(), ::tolower); return out;
-}
-
-std::string get_latest_date_for_day(const std::string& day) {
-  std::map<std::string, int> dayMap = {
-      {"sunday", 0}, {"monday", 1}, {"tuesday", 2},
-      {"wednesday", 3}, {"thursday", 4}, {"friday", 5}, {"saturday", 6},
-      {"sun", 0}, {"mon", 1}, {"tue", 2}, {"wed", 3}, {"thu", 4}, {"fri", 5}, {"sat", 6}
-  };
-  std::string lowerDay = to_lower(day);
-  if (dayMap.find(lowerDay) == dayMap.end()) throw std::invalid_argument("Invalid day: " + day);
-  std::time_t now = std::time(nullptr);
-  std::tm* t = std::localtime(&now);
-  int today = t->tm_wday;
-  int daysBack = (today - dayMap[lowerDay] + 7) % 7;
-  if (daysBack == 0) daysBack = 7;
-  t->tm_mday -= daysBack;
-  std::mktime(t);
-  std::ostringstream os; os << std::put_time(t, "%Y%m%d");
-  return os.str();
-}
-
-std::string replace_placeholders(const std::string& templateStr, const std::string& targetDate, const std::string& time) {
-  std::string result = templateStr;
-  result = std::regex_replace(result, std::regex("\\{yyyyMMdd\\}"), targetDate);
-  result = std::regex_replace(result, std::regex("\\{HHmm\\}"), time);
-  std::regex offsetRegex(R"(\{yyyyMMdd, (\d+)\})");
-  std::smatch match;
-  if (std::regex_search(result, match, offsetRegex)) {
-    int offset = std::stoi(match[1].str());
-    std::tm t = {};
-    std::istringstream ss(targetDate);
-    ss >> std::get_time(&t, "%Y%m%d");
-    t.tm_mday -= offset;
-    std::mktime(&t);
-    std::ostringstream os; os << std::put_time(&t, "%Y%m%d");
-    result = std::regex_replace(result, offsetRegex, os.str());
-  }
-  return result;
 }
 
 std::map<std::string, std::string> parse_toml(const std::string& section) {

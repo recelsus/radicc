@@ -1,23 +1,15 @@
 #include "core/radiko_programs.h"
-#include <cstdio>
-#include <memory>
+#include "core/radiko_http.h"
 #include <optional>
 #include <regex>
-#include <sstream>
 #include <string>
+#include <vector>
 
 namespace radicc {
 
 static std::string fetch_text(const std::string& url) {
-  std::ostringstream cmd;
-  cmd << "curl --silent --fail \"" << url << "\"";
-  std::string result;
-  FILE* pipe = popen(cmd.str().c_str(), "r");
-  if (!pipe) return result;
-  char buf[4096];
-  while (fgets(buf, sizeof(buf), pipe)) result.append(buf);
-  pclose(pipe);
-  return result;
+  auto result = curl_get_text(url);
+  return result ? *result : std::string();
 }
 
 std::optional<std::string> find_program_event_url(
