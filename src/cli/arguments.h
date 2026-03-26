@@ -12,6 +12,8 @@ void parse_arguments(
     std::string& id,
     std::string& url,
     int& duration,
+    int& date_offset,
+    bool& date_offset_set,
     std::string& output,
     std::string& weekday,
     std::string& personality,

@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -26,6 +27,38 @@ void print_error_and_exit(const std::string& message) {
 
 bool has_datetime_components(const std::array<std::string, 3>& datetime) {
   return datetime[0].size() == 4 && datetime[1].size() == 4 && datetime[2].size() == 6;
+}
+
+bool has_path_separator(const std::string& value) {
+  return value.find('/') != std::string::npos || value.find('\\') != std::string::npos;
+}
+
+bool is_directory_output_override(const std::string& value) {
+  if (value.empty()) return false;
+  if (value == "." || value == ".." || value == "./" || value == "../") return true;
+  return value.back() == '/' || value.back() == '\\';
+}
+
+std::string ensure_trailing_separator(const std::filesystem::path& path) {
+  std::string value = path.empty() ? std::string("./") : path.string();
+  if (value.empty()) value = "./";
+  if (value.back() != '/') value += '/';
+  return value;
+}
+
+std::string expand_output_dir(std::string value) {
+  value.erase(std::remove(value.begin(), value.end(), '\"'), value.end());
+  const char* home = std::getenv("HOME");
+  if (home) {
+    size_t pos = value.find("$HOME");
+    if (pos != std::string::npos) value.replace(pos, 5, home);
+    if (!value.empty() && value.front() == '~') value.replace(0, 1, home);
+  }
+  return ensure_trailing_separator(std::filesystem::path(value));
+}
+
+std::string build_output_path(const std::string& output_dir, const std::string& dir_name, const std::string& filename) {
+  return dir_name.empty() ? (output_dir + filename) : (output_dir + dir_name + "/" + filename);
 }
 
 std::time_t to_time_utc_like(const std::string& yyyymmddhhmmss) {
@@ -88,17 +121,22 @@ std::string json_escape(const std::string& input) {
 
 int main(int argc, char* argv[]) {
   using namespace radicc;
-  std::string target, id, url, station_id, filename, pfm, weekday, dir, title;
+  std::string target, id, url, station_id, output_option, pfm, weekday, dir, title;
   std::string image_url;       // final image
   std::string img_toml;        // fallback image from TOML (used only if no fetched image)
   std::string pfm_toml;        // fallback pfm from TOML (used only if no fetched pfm)
   bool fetch_only = false;
   bool json_output = false;
+  bool cli_date_offset_set = false;
   int duration = 0;
   std::array<std::string, 3> datetime = {"", "", ""};
   int date_offset = 0; // days to subtract for filename date
+  std::string toml_base_dir;
 
-  parse_arguments(argc, argv, target, id, url, duration, filename, weekday, pfm, fetch_only, json_output);
+  parse_arguments(argc, argv, target, id, url, duration, date_offset, cli_date_offset_set, output_option, weekday, pfm, fetch_only, json_output);
+
+  const auto global_config = parse_toml_global();
+  if (global_config.count("base_dir")) toml_base_dir = global_config.at("base_dir");
 
   bool has_valid_config = false;
 
@@ -153,9 +191,9 @@ int main(int argc, char* argv[]) {
       if (config.count("title")) title = config["title"];
       if (config.count("img")) img_toml = config["img"];
       if (config.count("pfm")) pfm_toml = config["pfm"];
-      if (config.count("date_offset")) { try { date_offset = std::stoi(config["date_offset"]); } catch (...) {} }
+      if (!cli_date_offset_set && config.count("date_offset")) { try { date_offset = std::stoi(config["date_offset"]); } catch (...) {} }
       if (config.count("dir")) dir = config["dir"];
-      if (config.count("filename")) filename = config["filename"];
+      if (output_option.empty() && config.count("filename")) output_option = config["filename"];
     } else {
       std::cerr << "Warning: Section not found by -t. Will try -i (if provided).\n";
     }
@@ -170,9 +208,9 @@ int main(int argc, char* argv[]) {
       if (config.count("title")) title = config["title"];
       if (config.count("img")) img_toml = config["img"];
       if (config.count("pfm")) pfm_toml = config["pfm"];
-      if (config.count("date_offset")) { try { date_offset = std::stoi(config["date_offset"]); } catch (...) {} }
+      if (!cli_date_offset_set && config.count("date_offset")) { try { date_offset = std::stoi(config["date_offset"]); } catch (...) {} }
       if (config.count("dir")) dir = config["dir"];
-      if (config.count("filename")) filename = config["filename"];
+      if (output_option.empty() && config.count("filename")) output_option = config["filename"];
       if (id.empty() && config.count("id")) id = config["id"];
     } else {
       std::cerr << "Warning: Could not find section by -i id.\n";
@@ -216,9 +254,11 @@ int main(int argc, char* argv[]) {
 
   std::string start_time = generate_14digit_datetime(datetime, 0);
   std::string end_time = generate_14digit_datetime(datetime, duration);
+  const bool explicit_output_path = has_path_separator(output_option) || is_directory_output_override(output_option);
   // Default dir only in TOML mode: create <title>/...
-  if (url.empty() && dir.empty() && !title.empty()) dir = title;
+  if (url.empty() && dir.empty() && !title.empty() && !explicit_output_path) dir = title;
   // Build filename: base (TOML filename or title) + -YYYYMMDD + .m4a (always append)
+  std::string filename;
   {
     auto ymd = datetime[0] + datetime[1];
     if (ymd.size() == 8 && date_offset != 0) {
@@ -226,7 +266,7 @@ int main(int argc, char* argv[]) {
       t.tm_mday -= date_offset; std::mktime(&t);
       std::ostringstream os; os << std::put_time(&t, "%Y%m%d"); ymd = os.str();
     }
-    std::string base = filename.empty() ? title : filename;
+    std::string base = output_option.empty() || explicit_output_path ? title : output_option;
     filename = base + "-" + ymd + ".m4a";
   }
 
@@ -265,7 +305,25 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  const std::string output_path = dir.empty() ? (output_dir + filename) : (output_dir + dir + "/" + filename);
+  std::string resolved_output_dir = output_dir;
+  std::string resolved_dir = dir;
+  std::string resolved_filename = filename;
+  if (!output_option.empty() && explicit_output_path) {
+    const std::filesystem::path override_path(output_option);
+    if (is_directory_output_override(output_option)) {
+      resolved_output_dir = ensure_trailing_separator(override_path);
+      resolved_dir.clear();
+    } else {
+      resolved_output_dir = ensure_trailing_separator(
+          override_path.has_parent_path() ? override_path.parent_path() : std::filesystem::path("."));
+      resolved_dir.clear();
+      resolved_filename = override_path.filename().string();
+    }
+  } else if (!toml_base_dir.empty()) {
+    resolved_output_dir = expand_output_dir(toml_base_dir);
+  }
+
+  const std::string output_path = build_output_path(resolved_output_dir, resolved_dir, resolved_filename);
   const std::filesystem::path absolute_output_path = std::filesystem::absolute(output_path);
 
   if (!fetch_only) {
@@ -273,7 +331,7 @@ int main(int argc, char* argv[]) {
     if (!auth_state) print_error_and_exit("Authorization failed.");
     auto stream_plan = build_timefree_stream_plan(station_id, start_time, end_time, is_areafree, *auth_state);
     if (!stream_plan) print_error_and_exit("Failed to resolve timefree stream request.");
-    if (!record_radiko(*stream_plan, filename, pfm, title, dir, output_dir, image_url)) {
+    if (!record_radiko(*stream_plan, resolved_filename, pfm, title, resolved_dir, resolved_output_dir, image_url)) {
       print_error_and_exit("Failed to record the broadcast.");
     }
     logout_from_radiko(session_id);
@@ -286,9 +344,9 @@ int main(int argc, char* argv[]) {
 
   const std::string resolved_id = id.empty() ? target : id;
   const std::string absolute_path_str = absolute_output_path.string();
-  const std::string directory_path = dir.empty()
-      ? output_dir
-      : output_dir + dir + "/";
+  const std::string directory_path = resolved_dir.empty()
+      ? resolved_output_dir
+      : resolved_output_dir + resolved_dir + "/";
 
   const std::string start_date = start_time.size() >= 8 ? start_time.substr(0, 8) : std::string();
 
@@ -300,10 +358,10 @@ int main(int argc, char* argv[]) {
     json << "\"start_time\":\"" << json_escape(start_time) << "\",";
     json << "\"end_time\":\"" << json_escape(end_time) << "\",";
     json << "\"duration_minutes\":" << duration << ',';
-    json << "\"output_file\":\"" << json_escape(filename) << "\",";
+    json << "\"output_file\":\"" << json_escape(resolved_filename) << "\",";
     json << "\"filepath\":\"" << json_escape(absolute_path_str) << "\",";
     json << "\"title\":\"" << json_escape(title) << "\",";
-    json << "\"dir\":\"" << json_escape(dir) << "\",";
+    json << "\"dir\":\"" << json_escape(resolved_dir) << "\",";
     json << "\"directory\":\"" << json_escape(directory_path) << "\",";
     json << "\"pfm\":\"" << json_escape(pfm) << "\",";
     json << "\"image_url\":\"" << json_escape(image_url) << "\",";
@@ -317,10 +375,10 @@ int main(int argc, char* argv[]) {
     std::cout << "Station: " << station_id << "\n";
     std::cout << "Time: " << start_time << " - " << end_time << "\n";
     std::cout << "Duration: " << duration << " minutes\n";
-    std::cout << "Output File: " << filename << "\n";
+    std::cout << "Output File: " << resolved_filename << "\n";
     std::cout << "pfm: " << pfm << "\n";
-    if (!dir.empty()) {
-      std::cout << "dir: " << dir << "\n";
+    if (!resolved_dir.empty()) {
+      std::cout << "dir: " << resolved_dir << "\n";
     }
     std::cout << "Directory: " << directory_path << "\n\n";
     if (!image_url.empty()) std::cout << "(image url)   " << image_url << "\n";

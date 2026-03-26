@@ -82,12 +82,9 @@ bool check_radiko_credentials(std::string& radiko_user, std::string& radiko_pass
     return expanded;
   };
 
-  const char* radicc_output = std::getenv("RADICC_OUTPUT_DIR");
-  const char* legacy_output = std::getenv("OUTPUT_DIR");
-  if (radicc_output && *radicc_output) {
-    output_dir = expand_path(radicc_output);
-  } else if (legacy_output && *legacy_output) {
-    output_dir = expand_path(legacy_output);
+  const char* radicc_dir = std::getenv("RADICC_DIR");
+  if (radicc_dir && *radicc_dir) {
+    output_dir = expand_path(radicc_dir);
   } else {
     output_dir = "./";
   }
