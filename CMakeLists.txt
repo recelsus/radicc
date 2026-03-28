@@ -9,8 +9,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(radicc_utils
+  src/app/common.cpp
   src/cli/arguments.cpp
   src/core/radiko_http.cpp
+  src/utils/base64.cpp
   src/utils/date.cpp
   src/utils/env_loader.cpp
 )
@@ -20,10 +22,15 @@ target_include_directories(radicc_utils PUBLIC
 )
 
 add_library(radicc_radiko
+  src/app/list_command.cpp
+  src/app/output_path.cpp
+  src/app/record_resolver.cpp
   src/core/radiko_auth.cpp
   src/core/radiko_stream.cpp
   src/core/url_parser.cpp
+  src/core/radiko_programs_date.cpp
   src/core/radiko_programs.cpp
+  src/core/radiko_programs_xml.cpp
   src/core/toml_parser.cpp
 )
 target_include_directories(radicc_radiko PUBLIC
@@ -33,6 +40,7 @@ target_include_directories(radicc_radiko PUBLIC
 target_link_libraries(radicc_radiko PUBLIC radicc_utils)
 
 add_library(radicc_recording
+  src/app/record_command.cpp
   src/core/radiko_recorder.cpp
 )
 target_include_directories(radicc_recording PUBLIC

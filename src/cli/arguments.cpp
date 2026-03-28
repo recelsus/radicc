@@ -6,85 +6,116 @@
 
 namespace radicc {
 
-namespace {
+void show_usage(const std::string& program_name, const std::string& command) {
+  if (command == "rec") {
+    std::cout
+        << "Usage: " << program_name << " rec [options]\n"
+        << "Options:\n"
+        << "  -t, --target <name>       TOML section name\n"
+        << "  -i, --id <id>             TOML id\n"
+        << "  -u, --url <url>           Radiko timeshift URL\n"
+        << "  -d, --duration <minutes>  Recording duration in minutes\n"
+        << "      --date-offset <days>  Shift filename date backward\n"
+        << "  -o, --output <path>       Output filename base or explicit path\n"
+        << "      --json                Print result as JSON\n"
+        << "  -h, --help                Show this help\n";
+    return;
+  }
 
-void show_usage(const char* program_name) {
+  if (command == "fetch") {
+    std::cout
+        << "Usage: " << program_name << " fetch [options]\n"
+        << "Options:\n"
+        << "  -t, --target <name>       TOML section name\n"
+        << "  -i, --id <id>             TOML id\n"
+        << "  -u, --url <url>           Radiko timeshift URL\n"
+        << "  -d, --duration <minutes>  Recording duration in minutes\n"
+        << "      --date-offset <days>  Shift filename date backward\n"
+        << "  -o, --output <path>       Output filename base or explicit path\n"
+        << "      --json                Print result as JSON\n"
+        << "  -h, --help                Show this help\n";
+    return;
+  }
+
+  if (command == "list") {
+    std::cout
+        << "Usage: " << program_name << " list --station-id <id> [options]\n"
+        << "Options:\n"
+        << "      --station-id <id>     Fetch schedule for station id\n"
+        << "      --date <YYYYMMDD>     Schedule date (default: today JST)\n"
+        << "      --json                Print result as JSON\n"
+        << "  -h, --help                Show this help\n";
+    return;
+  }
+
   std::cout
-      << "Usage: " << program_name << " [options]\n"
-      << "Options:\n"
-      << "  -t, --target <name>       TOML section name\n"
-      << "  -i, --id <id>             TOML id\n"
-      << "  -u, --url <url>           Radiko timeshift URL\n"
-      << "  -d, --duration <minutes>  Recording duration in minutes\n"
-      << "      --date-offset <days>  Shift filename date backward\n"
-      << "  -o, --output <path>       Output filename base or explicit path\n"
-      << "  -w, --weekday <value>     Reserved option\n"
-      << "  -p, --personality <name>  Personality override\n"
-      << "      --fetch               Resolve program info without recording\n"
-      << "      --json                Print result as JSON\n"
-      << "  -h, --help                Show this help\n";
+      << "Usage: " << program_name << " <command> [options]\n"
+      << "Commands:\n"
+      << "  rec                     Record program\n"
+      << "  fetch                   Resolve program info without recording\n"
+      << "  list                    List station schedule for one date\n"
+      << "\n"
+      << "Examples:\n"
+      << "  " << program_name << " rec --url https://radiko.jp/#!/ts/JORF/20260322003000\n"
+      << "  " << program_name << " fetch -t karin-zatsudan\n"
+      << "  " << program_name << " list --station-id JORF --date 20260322\n"
+      << "\n"
+      << "Use `<command> --help` for command-specific options.\n";
 }
 
-}  // namespace
-
 void parse_arguments(
+    const std::string& program_name,
+    const std::string& command,
     int argc,
     char* argv[],
-    std::string& target,
-    std::string& id,
-    std::string& url,
-    int& duration,
-    int& date_offset,
-    bool& date_offset_set,
-    std::string& output,
-    std::string& weekday,
-    std::string& personality,
-    bool& fetch_only,
-    bool& json_output) {
-  for (int i = 1; i < argc; ++i) {
+    int start_index,
+    CommandOptions& options) {
+  for (int i = start_index; i < argc; ++i) {
     std::string arg = argv[i];
     if (arg == "--help" || arg == "-h") {
-      show_usage(argv[0]);
+      show_usage(program_name, command);
       std::exit(0);
     } else if ((arg == "--target" || arg == "-t") && i + 1 < argc) {
-      target = argv[++i];
+      options.target = argv[++i];
     } else if ((arg == "--url" || arg == "-u") && i + 1 < argc) {
-      url = argv[++i];
+      options.url = argv[++i];
+    } else if (arg == "--station-id" && i + 1 < argc) {
+      options.station_id = argv[++i];
+    } else if (arg == "--date" && i + 1 < argc) {
+      options.date = argv[++i];
     } else if ((arg == "--id" || arg == "-i") && i + 1 < argc) {
-      id = argv[++i];
+      options.id = argv[++i];
     } else if ((arg == "--duration" || arg == "-d") && i + 1 < argc) {
       try {
-        duration = std::stoi(argv[++i]);
+        options.duration = std::stoi(argv[++i]);
       } catch (const std::exception&) {
         std::cerr << "Invalid duration: " << argv[i] << std::endl;
         std::exit(1);
       }
-      if (duration <= 0) {
+      if (options.duration <= 0) {
         std::cerr << "Duration must be greater than 0." << std::endl;
         std::exit(1);
       }
     } else if (arg == "--date-offset" && i + 1 < argc) {
       try {
-        date_offset = std::stoi(argv[++i]);
-        date_offset_set = true;
+        options.date_offset = std::stoi(argv[++i]);
+        options.date_offset_set = true;
       } catch (const std::exception&) {
         std::cerr << "Invalid date offset: " << argv[i] << std::endl;
         std::exit(1);
       }
-      if (date_offset < 0) {
+      if (options.date_offset < 0) {
         std::cerr << "Date offset must be 0 or greater." << std::endl;
         std::exit(1);
       }
     } else if ((arg == "--output" || arg == "-o") && i + 1 < argc) {
-      output = argv[++i];
+      options.output = argv[++i];
     } else if ((arg == "--weekday" || arg == "-w") && i + 1 < argc) {
-      weekday = argv[++i];
+      options.weekday = argv[++i];
     } else if ((arg == "--personality" || arg == "-p") && i + 1 < argc) {
-      personality = argv[++i];
-    } else if (arg == "--fetch") {
-      fetch_only = true;
+      options.personality = argv[++i];
     } else if (arg == "--json") {
-      json_output = true;
+      options.json_output = true;
     } else {
       std::cerr << "Invalid argument: " << arg << std::endl;
       std::cerr << "Try --help for usage." << std::endl;

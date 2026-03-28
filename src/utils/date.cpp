@@ -19,6 +19,22 @@ int days_in_month(int year, int month) {
   return kDays[month - 1];
 }
 
+bool is_valid_date8_strict(const std::string& value) {
+  if (value.size() != 8) return false;
+  for (char ch : value) {
+    if (ch < '0' || ch > '9') return false;
+  }
+
+  const int year = std::stoi(value.substr(0, 4));
+  const int month = std::stoi(value.substr(4, 2));
+  const int day = std::stoi(value.substr(6, 2));
+
+  if (year < 1970) return false;
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > days_in_month(year, month)) return false;
+  return true;
+}
+
 }  // namespace
 
 std::string generate_14digit_datetime(const std::array<std::string, 3>& datetime, int duration) {
@@ -127,6 +143,16 @@ std::string from_unixtime_jst(std::int64_t unixtime) {
      << std::setw(2) << std::setfill('0') << minute
      << std::setw(2) << std::setfill('0') << second;
   return os.str();
+}
+
+std::string shift_date8(const std::string& yyyymmdd, int days) {
+  if (!is_valid_date8_strict(yyyymmdd)) return {};
+
+  std::string datetime14 = yyyymmdd + "000000";
+  const std::int64_t unixtime = to_unixtime_jst(datetime14);
+  if (unixtime < 0) return {};
+  const std::string shifted = from_unixtime_jst(unixtime + static_cast<std::int64_t>(days) * 86400);
+  return shifted.size() >= 8 ? shifted.substr(0, 8) : std::string();
 }
 
 } // namespace radicc

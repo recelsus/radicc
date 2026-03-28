@@ -1,6 +1,7 @@
 #pragma once
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace radicc {
 
@@ -35,5 +36,9 @@ std::optional<ProgramEventInfo> find_nearest_weekly_program_info(
 std::optional<ProgramEventInfo> find_program_by_station_ft(
     const std::string& station_id,
     const std::string& ft);
+
+std::vector<ProgramEventInfo> list_programs_by_station_date(
+    const std::string& station_id,
+    const std::string& yyyymmdd);
 
 } // namespace radicc

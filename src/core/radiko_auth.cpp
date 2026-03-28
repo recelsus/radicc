@@ -1,7 +1,7 @@
 #include "core/radiko_auth.h"
 
-#include "base64.hpp"
 #include "core/radiko_http.h"
+#include "utils/base64.h"
 
 #include <iostream>
 
@@ -11,7 +11,7 @@ namespace {
 constexpr char kAuthKeyValue[] = "bcd151073c03b352e1ef2fd66c32209da9ca0afa";
 
 std::string generate_partial_key(int keyoffset, int keylength) {
-  return base64::to_base64(std::string(kAuthKeyValue).substr(static_cast<size_t>(keyoffset), static_cast<size_t>(keylength)));
+  return encode_base64(std::string(kAuthKeyValue).substr(static_cast<size_t>(keyoffset), static_cast<size_t>(keylength)));
 }
 
 std::optional<std::string> find_json_string(const std::string& body, const std::string& key) {
