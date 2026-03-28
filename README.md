@@ -1,10 +1,12 @@
 # Radicc
 
-A lightweight Radiko recorder that generates m4a from either a scheduled TOML entry or a one-off URL. Uses FFmpeg libraries (libavformat/libavcodec/libavutil) by default for remuxing and metadata; embeds cover art (attached_pic) when possible, and falls back to audio-only if not.
+A lightweight Radiko utility with three subcommands:
 
-- TOML (recurring): title + station, with optional dir/filename/date_offset overrides
-- URL (one-off): station + ft parsed from URL (TOML is not consulted)
-- Library-based pipeline (default): HLS + Radiko headers → AAC copy + aac_adtstoasc → MP4/M4A, artist/album metadata, best-effort cover art
+- `rec`: record a program to m4a
+- `fetch`: resolve program information without recording
+- `list`: list one day of schedule for a station
+
+Recording uses FFmpeg libraries (`libavformat` / `libavcodec` / `libavutil`) for remuxing and metadata. Cover art is embedded when possible and falls back to audio-only when not.
 
 ## Dependencies
 
@@ -25,57 +27,130 @@ The build fails if libav* are not found (CLI fallback is removed).
 
 ## .env (optional)
 
-Searched in `$XDG_CONFIG_HOME/radicc` or `~/.config/radicc`.
+Radiko login settings are optional. Search order:
+
+1. `$XDG_CONFIG_HOME/radicc`
+2. `~/.config/radicc`
 
 ```bash
 RADIKO_USER=you@example.com
 RADIKO_PASS=yourpassword
-OUTPUT_DIR="$HOME/Radiko"
 ```
+
+Example environment variable:
+
+```bash
+export RADICC_DIR="$HOME/Radiko/"
+```
+
+`RADICC_DIR` is the default output root when no higher-priority path is provided.
 
 ## TOML (recurring)
 
-Minimal fields: `title` (section name) and `station`.
-Optional overrides: `dir` (folder), `filename` (base; `-YYYYMMDD.m4a` is always appended), `date_offset` (filename date only), and fallbacks `img`/`pfm` (used only if not fetched).
+Minimal fields are `title` (section name) and `station`.
+
+- Global: `base_dir` sets a common output root for all entries
+- Per-entry: `dir` is a subdirectory under `base_dir`
+- Per-entry: `filename` is the filename base; `-YYYYMMDD.m4a` is appended automatically
+- Per-entry: `date_offset` adjusts the filename date only
+- Per-entry: `img` / `pfm` are fallbacks used only if not fetched
 
 ```toml
-[example]            # select via -t example (section name acts as title)
-id = "my-program"    # or select via -i my-program (id acts as title)
+base_dir = "$HOME/Radiko"
+
+[example]            # select via -t example
+id = "my-program"    # or select via -i my-program
 title = "Program Title"
 station = "JORF"
 img = ""             # used only if no image fetched
 pfm = ""             # used only if no pfm fetched
 date_offset = 0      # adjust filename date only (days; e.g., 1)
-dir = ""             # defaults to title
+dir = ""             # subdirectory under base_dir; only used when explicitly set
 filename = ""        # defaults to <title>-YYYYMMDD.m4a (suffix always appended)
 ```
 
 - Discovery: `title + station` → weekly XML → nearest past entry (to <= now)
 - Fetched: `id/title/pfm/ft/to/img`. Save-time priority: pfm/img → fetched > TOML; dir/filename → TOML if present; album is always title.
 
-## URL mode (one-off)
+## Output Path Priority
 
-TOML is ignored entirely. The URL provides `station` and `ft`; we match the exact entry in the weekly XML and record it.
+Output root/path is resolved in this order:
+
+1. `-o` explicit path
+2. TOML global `base_dir`
+3. `RADICC_DIR`
+4. current directory `./`
+
+Examples:
+
+- `-o my_pick`
+  Writes under the default output root as `my_pick-YYYYMMDD.m4a`
+- `-o ./`
+  Writes in the current directory
+- `-o ./file.m4a`
+  Writes exactly to `./file.m4a`
+- `-o /path/to/file.m4a`
+  Writes exactly to that file path
+
+Parent directories are created automatically. A subdirectory is created only when `dir` or a directory path in `-o` is explicitly provided.
+
+## Subcommands
+
+### `rec`
+
+Record a program from TOML or a Radiko timeshift URL.
 
 ```bash
-./radicc --url 'https://radiko.jp/#!/ts/FMO/20250920140000' -o clips/my_pick
+./radicc rec -t example
+./radicc rec --url 'https://radiko.jp/#!/ts/FMO/20250920140000'
+./radicc rec --url 'https://radiko.jp/#!/ts/FMO/20250920140000' --date-offset 1
 ```
 
-- `-o` accepts a base name or relative path; `-YYYYMMDD.m4a` is always appended. Parent directories are created automatically.
-- Cover art is embedded when possible; otherwise the file is written as audio-only.
+### `fetch`
 
-## CLI Options
+Resolve program info without recording. This is the old `--fetch` behavior.
 
-- `-t, --target <section>`: select TOML section (preferred)
-- `-i, --id <id>`: select by `id` in TOML (fallback)
-- `-u, --url <url>`: URL mode (ignores TOML)
-- `-o, --output <name-or-path>`: base name or relative path (`-YYYYMMDD.m4a` appended)
+```bash
+./radicc fetch -t example
+./radicc fetch --url 'https://radiko.jp/#!/ts/FMO/20250920140000'
+./radicc fetch --url 'https://radiko.jp/#!/ts/FMO/20250920140000' --json
+```
+
+### `list`
+
+List one day of programs for a station.
+
+```bash
+./radicc list --station-id JORF
+./radicc list --station-id JORF --date 20260327
+./radicc list --station-id JORF --date 20260327 --json
+```
+
+- If `--date` is omitted, `radicc` tries the current JST date first, then the previous day, then the next day
+- Normal output prints a formatted list
+- `--json` prints an array suitable for tools like `fzf`
+- Each item includes a timefree URL in the form `https://radiko.jp/#!/ts/{station_id}/{ft}`
+
+## Command Options
+
+### `rec` / `fetch`
+
+- `-t, --target <section>`: select TOML section
+- `-i, --id <id>`: select by `id` in TOML
+- `-u, --url <url>`: one-off URL mode
+- `-o, --output <name-or-path>`: filename base, directory override, or explicit file path
 - `-d, --duration <min>`: override duration in minutes
-- `--dry-run`: resolve and print only; do not record
+- `--date-offset <days>`: shift the filename date backward
+- `--json`: print resolved result as JSON
+
+### `list`
+
+- `--station-id <id>`: station id
+- `--date <YYYYMMDD>`: target date, max one day
+- `--json`: print raw JSON array
 
 ## Notes
 
 - Album is always the resolved title; artist is pfm (fetched when available, empty otherwise).
 - Library logging is reduced to errors to avoid noisy per-segment messages.
 - See `FLOW.md` and `FLOW-ja.md` for detailed flow, required/optional fields, and priorities.
-
