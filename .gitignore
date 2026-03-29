@@ -120,3 +120,8 @@ vcpkg*.log
 
 # CPM.cmake cache
 CPMCache/
+
+# -----------------------------
+# Local Docker Overrides
+# -----------------------------
+docker/docker-compose.yml
