@@ -1,14 +1,11 @@
 #include "app/common.h"
 
-#include <cstdlib>
 #include <ctime>
-#include <iostream>
 
 namespace radicc {
 
 [[noreturn]] void print_error_and_exit(const std::string& message) {
-  std::cerr << "Error: " << message << std::endl;
-  std::exit(1);
+  throw RadiccError(message);
 }
 
 bool has_datetime_components(const std::array<std::string, 3>& datetime) {

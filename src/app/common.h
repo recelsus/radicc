@@ -2,9 +2,15 @@
 
 #include <array>
 #include <ctime>
+#include <stdexcept>
 #include <string>
 
 namespace radicc {
+
+class RadiccError : public std::runtime_error {
+ public:
+  using std::runtime_error::runtime_error;
+};
 
 [[noreturn]] void print_error_and_exit(const std::string& message);
 bool has_datetime_components(const std::array<std::string, 3>& datetime);

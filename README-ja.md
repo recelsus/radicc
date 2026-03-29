@@ -126,3 +126,43 @@ filename = ""        # 省略時は <title>-YYYYMMDD.m4a（必ず -YYYYMMDD.m4a 
 - `--date <YYYYMMDD>`: 対象日付
 - `--json`: JSON 配列で出力
 
+## Server
+
+`radicc-server` は個人利用向けの簡易 HTTP サーバーです。
+
+起動例:
+```bash
+./radicc-server --port 8080
+```
+
+health check:
+```bash
+curl http://127.0.0.1:8080/health
+```
+
+録音リクエスト:
+```bash
+curl -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://radiko.jp/#!/ts/STATION/YYYYMMDDHHMMSS","date_offset":1}' \
+  http://127.0.0.1:8080/record
+```
+
+レスポンス例:
+```json
+{
+  "status": "done",
+  "job_id": "d18b6740d8fb41d2",
+  "download_url": "/download/d18b6740d8fb41d2",
+  "filepath": "/path/to/file.m4a",
+  "output_file": "file.m4a",
+  "title": "Program Title",
+  "start_time": "20260329000000",
+  "end_time": "20260329003000"
+}
+```
+
+ダウンロード例:
+```bash
+curl -OJ http://127.0.0.1:8080/download/d18b6740d8fb41d2
+```

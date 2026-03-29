@@ -40,7 +40,7 @@ target_include_directories(radicc_radiko PUBLIC
 target_link_libraries(radicc_radiko PUBLIC radicc_utils)
 
 add_library(radicc_recording
-  src/app/record_command.cpp
+  src/service/record_service.cpp
   src/core/radiko_recorder.cpp
 )
 target_include_directories(radicc_recording PUBLIC
@@ -49,6 +49,15 @@ target_include_directories(radicc_recording PUBLIC
 )
 target_link_libraries(radicc_recording PUBLIC radicc_radiko)
 
+add_library(radicc_cli
+  src/app/record_command.cpp
+)
+target_include_directories(radicc_cli PUBLIC
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/src
+)
+target_link_libraries(radicc_cli PUBLIC radicc_recording)
+
 add_executable(radicc
   src/main.cpp
 )
@@ -56,7 +65,16 @@ target_include_directories(radicc PRIVATE
   ${CMAKE_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}/src
 )
-target_link_libraries(radicc PRIVATE radicc_recording)
+target_link_libraries(radicc PRIVATE radicc_cli)
+
+add_executable(radicc-server
+  src/server/main.cpp
+)
+target_include_directories(radicc-server PRIVATE
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/src
+)
+target_link_libraries(radicc-server PRIVATE radicc_recording)
 
 # Build metadata (similar to karing)
 execute_process(
@@ -87,7 +105,7 @@ target_compile_definitions(radicc PRIVATE
 
 # Install rules
 include(GNUInstallDirs)
-install(TARGETS radicc RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS radicc radicc-server RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES config/radicc.toml.example config/env.example DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/radicc)
 add_executable(radicc_fetch
   src/tools/fetch.cpp

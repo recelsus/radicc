@@ -154,3 +154,44 @@ List one day of programs for a station.
 - Album is always the resolved title; artist is pfm (fetched when available, empty otherwise).
 - Library logging is reduced to errors to avoid noisy per-segment messages.
 - See `FLOW.md` and `FLOW-ja.md` for detailed flow, required/optional fields, and priorities.
+
+## Server
+
+`radicc-server` is a small HTTP wrapper intended for personal use.
+
+Start:
+```bash
+./radicc-server --port 8080
+```
+
+Health check:
+```bash
+curl http://127.0.0.1:8080/health
+```
+
+Record request:
+```bash
+curl -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://radiko.jp/#!/ts/STATION/YYYYMMDDHHMMSS","date_offset":1}' \
+  http://127.0.0.1:8080/record
+```
+
+Example response:
+```json
+{
+  "status": "done",
+  "job_id": "d18b6740d8fb41d2",
+  "download_url": "/download/d18b6740d8fb41d2",
+  "filepath": "/path/to/file.m4a",
+  "output_file": "file.m4a",
+  "title": "Program Title",
+  "start_time": "20260329000000",
+  "end_time": "20260329003000"
+}
+```
+
+Download:
+```bash
+curl -OJ http://127.0.0.1:8080/download/d18b6740d8fb41d2
+```

@@ -29,7 +29,7 @@ void apply_url_mode(const CommandOptions& options, ResolvedRecord& resolved, int
   validate_url_age(ft, max_timefree_days);
 
   auto info = find_program_by_station_ft(resolved.station_id, ft);
-  if (!info) print_error_and_exit("Program not found by station+ft in weekly XML.");
+  if (!info) print_error_and_exit("Program not found by station+ft.");
   resolved.title = info->title;
   resolved.pfm = info->pfm;
   resolved.image_url = info->image_url;

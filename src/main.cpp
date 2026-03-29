@@ -1,4 +1,5 @@
 #include "app/command_options.h"
+#include "app/common.h"
 #include "app/list_command.h"
 #include "app/record_command.h"
 #include "cli/arguments.h"
@@ -22,24 +23,29 @@ int print_missing_subcommand(const std::string& program_name) {
 
 int main(int argc, char* argv[]) {
   using namespace radicc;
-  const std::string program_name = argc > 0 ? std::string(argv[0]) : std::string("radicc");
-  if (argc < 2) return print_missing_subcommand(program_name);
+  try {
+    const std::string program_name = argc > 0 ? std::string(argv[0]) : std::string("radicc");
+    if (argc < 2) return print_missing_subcommand(program_name);
 
-  const std::string command = argv[1];
-  if (command == "--help" || command == "-h") {
-    show_usage(program_name);
-    return 0;
-  }
-  if (command != "rec" && command != "fetch" && command != "list") {
-    std::cerr << "Error: unknown command '" << command << "'.\n";
-    std::cerr << "Try --help for usage.\n";
+    const std::string command = argv[1];
+    if (command == "--help" || command == "-h") {
+      show_usage(program_name);
+      return 0;
+    }
+    if (command != "rec" && command != "fetch" && command != "list") {
+      std::cerr << "Error: unknown command '" << command << "'.\n";
+      std::cerr << "Try --help for usage.\n";
+      return 1;
+    }
+
+    CommandOptions options;
+    options.fetch_only = command == "fetch";
+    parse_arguments(program_name, command, argc, argv, 2, options);
+
+    if (command == "list") return run_list_command(options);
+    return run_record_command(options);
+  } catch (const RadiccError& error) {
+    std::cerr << "Error: " << error.what() << std::endl;
     return 1;
   }
-
-  CommandOptions options;
-  options.fetch_only = command == "fetch";
-  parse_arguments(program_name, command, argc, argv, 2, options);
-
-  if (command == "list") return run_list_command(options);
-  return run_record_command(options);
 }
