@@ -1,0 +1,27 @@
+# vim: ft=yaml
+
+services:
+  radicc-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: radicc-server:latest
+    container_name: radicc-server
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    ports:
+      - "8080:8080"
+    environment:
+      HOME: /home/app
+      RADICC_DIR: /recordings
+      RADIKO_USER: ${RADIKO_USER:-}
+      RADIKO_PASS: ${RADIKO_PASS:-}
+    volumes:
+      - ./recordings:/recordings
+    working_dir: /home/app
+    restart: unless-stopped
+    # networks:
+    #   - radicc
+
+# networks:
+#   radicc:
+#     driver: bridge
