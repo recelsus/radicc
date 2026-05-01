@@ -115,18 +115,110 @@ target_link_libraries(radicc_fetch PRIVATE radicc_utils)
 option(RADICC_USE_LIBAV "Use FFmpeg libav* libraries (default ON)" ON)
 
 if (RADICC_USE_LIBAV)
+  add_library(radicc_ffmpeg INTERFACE)
+
+  function(radicc_append_existing_dirs out_var)
+    set(_existing_dirs "")
+    foreach(_dir IN LISTS ARGN)
+      if (EXISTS "${_dir}")
+        list(APPEND _existing_dirs "${_dir}")
+      endif()
+    endforeach()
+    set(${out_var} "${_existing_dirs}" PARENT_SCOPE)
+  endfunction()
+
+  set(_radicc_ffmpeg_found OFF)
+  set(_radicc_pkgconfig_hint OFF)
+
   find_package(PkgConfig QUIET)
   if (PkgConfig_FOUND)
-    pkg_check_modules(AVFORMAT QUIET IMPORTED_TARGET libavformat)
-    pkg_check_modules(AVCODEC QUIET IMPORTED_TARGET libavcodec)
-    pkg_check_modules(AVUTIL QUIET IMPORTED_TARGET libavutil)
+    pkg_check_modules(AVFORMAT QUIET libavformat)
+    pkg_check_modules(AVCODEC QUIET libavcodec)
+    pkg_check_modules(AVUTIL QUIET libavutil)
+
+    radicc_append_existing_dirs(
+      _radicc_ffmpeg_include_dirs
+      ${AVFORMAT_INCLUDE_DIRS}
+      ${AVCODEC_INCLUDE_DIRS}
+      ${AVUTIL_INCLUDE_DIRS}
+    )
+
+    if (AVFORMAT_FOUND AND AVCODEC_FOUND AND AVUTIL_FOUND)
+      if (_radicc_ffmpeg_include_dirs)
+        target_include_directories(radicc_ffmpeg INTERFACE ${_radicc_ffmpeg_include_dirs})
+        target_link_directories(radicc_ffmpeg INTERFACE
+          ${AVFORMAT_LIBRARY_DIRS}
+          ${AVCODEC_LIBRARY_DIRS}
+          ${AVUTIL_LIBRARY_DIRS}
+        )
+        target_link_libraries(radicc_ffmpeg INTERFACE
+          ${AVFORMAT_LINK_LIBRARIES}
+          ${AVCODEC_LINK_LIBRARIES}
+          ${AVUTIL_LINK_LIBRARIES}
+        )
+        set(_radicc_ffmpeg_found ON)
+      else()
+        set(_radicc_pkgconfig_hint ON)
+      endif()
+    endif()
   endif()
-  if (NOT (TARGET PkgConfig::AVFORMAT AND TARGET PkgConfig::AVCODEC AND TARGET PkgConfig::AVUTIL))
-    message(FATAL_ERROR "libavformat/libavcodec/libavutil not found. Install FFmpeg dev packages or set -DRADICC_USE_LIBAV=OFF explicitly (not recommended).")
+
+  if (NOT _radicc_ffmpeg_found)
+    if (APPLE)
+      set(_radicc_ffmpeg_roots /opt/homebrew /usr/local /usr)
+    else()
+      set(_radicc_ffmpeg_roots /usr /usr/local)
+    endif()
+
+    find_path(RADICC_FFMPEG_INCLUDE_DIR
+      NAMES libavformat/avformat.h
+      HINTS ${_radicc_ffmpeg_roots}
+      PATH_SUFFIXES include
+    )
+    find_library(RADICC_AVFORMAT_LIBRARY
+      NAMES avformat
+      HINTS ${_radicc_ffmpeg_roots}
+      PATH_SUFFIXES lib
+    )
+    find_library(RADICC_AVCODEC_LIBRARY
+      NAMES avcodec
+      HINTS ${_radicc_ffmpeg_roots}
+      PATH_SUFFIXES lib
+    )
+    find_library(RADICC_AVUTIL_LIBRARY
+      NAMES avutil
+      HINTS ${_radicc_ffmpeg_roots}
+      PATH_SUFFIXES lib
+    )
+
+    if (RADICC_FFMPEG_INCLUDE_DIR AND RADICC_AVFORMAT_LIBRARY AND RADICC_AVCODEC_LIBRARY AND RADICC_AVUTIL_LIBRARY)
+      target_include_directories(radicc_ffmpeg INTERFACE ${RADICC_FFMPEG_INCLUDE_DIR})
+      target_link_libraries(radicc_ffmpeg INTERFACE
+        ${RADICC_AVFORMAT_LIBRARY}
+        ${RADICC_AVCODEC_LIBRARY}
+        ${RADICC_AVUTIL_LIBRARY}
+      )
+      set(_radicc_ffmpeg_found ON)
+    endif()
   endif()
+
+  if (NOT _radicc_ffmpeg_found)
+    if (APPLE AND _radicc_pkgconfig_hint)
+      message(FATAL_ERROR
+        "FFmpeg headers/libs were reported by pkg-config, but the include paths do not exist. "
+        "This usually means Homebrew upgraded or removed an old ffmpeg keg. "
+        "Try reinstalling ffmpeg/pkg-config or fixing PKG_CONFIG_PATH, then re-run CMake."
+      )
+    endif()
+    message(FATAL_ERROR
+      "libavformat/libavcodec/libavutil not found. Install FFmpeg dev packages or set "
+      "-DRADICC_USE_LIBAV=OFF explicitly (not recommended)."
+    )
+  endif()
+
   message(STATUS "libav* found; enabling library-based recorder (default)")
   target_compile_definitions(radicc_recording PRIVATE USE_LIBAV)
-  target_link_libraries(radicc_recording PRIVATE PkgConfig::AVFORMAT PkgConfig::AVCODEC PkgConfig::AVUTIL)
+  target_link_libraries(radicc_recording PRIVATE radicc_ffmpeg)
 else()
   message(FATAL_ERROR "CLI recorder has been deprecated. Build with RADICC_USE_LIBAV=ON (default).")
 endif()
