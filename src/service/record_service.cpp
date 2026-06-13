@@ -52,9 +52,22 @@ RecordExecutionResult execute_record_request(const CommandOptions& options) {
   if (!result.resolved.fetch_only) {
     auto auth_state = authorize_radiko(session_id);
     if (!auth_state) print_error_and_exit("Authorization failed.");
+    if (!is_areafree) {
+      const auto station_available =
+          is_station_available_in_area(result.resolved.station_id, auth_state->area_id);
+      if (station_available.has_value() && !*station_available) {
+        print_error_and_exit(
+            "Station " + result.resolved.station_id + " is outside authorized area "
+            + auth_state->area_id + ". Radiko Premium login is required.");
+      }
+    }
     auto stream_plan = build_timefree_stream_plan(
         result.resolved.station_id, result.start_time, result.end_time, is_areafree, *auth_state);
     if (!stream_plan) print_error_and_exit("Failed to resolve timefree stream request.");
+    if (!options.json_output) {
+      std::cerr << "Radiko authorization area: " << stream_plan->area_id
+                << ", areafree: " << (is_areafree ? "enabled" : "disabled") << std::endl;
+    }
     if (!record_radiko(
             *stream_plan, result.paths.filename, result.resolved.pfm, result.resolved.title,
             result.paths.dir_name, result.paths.output_dir, result.resolved.image_url)) {

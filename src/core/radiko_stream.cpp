@@ -79,8 +79,9 @@ std::optional<RadikoStreamPlan> build_timefree_stream_plan(
   if (start_unixtime < 0 || end_unixtime <= start_unixtime) return std::nullopt;
 
   RadikoStreamPlan plan;
+  plan.area_id = auth_state.area_id;
   plan.request_headers = "X-Radiko-Authtoken: " + auth_state.authtoken + "\r\n"
-      + "X-Radiko-AreaId: " + auth_state.area_id;
+      + "X-Radiko-AreaId: " + auth_state.area_id + "\r\n";
 
   const std::string lsid = generate_lsid();
   for (const auto& base_url : playlist_urls) {

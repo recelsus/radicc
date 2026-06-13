@@ -12,6 +12,9 @@ Options:
       --date-offset <days>  Passed through to `radicc rec --date-offset`
   -h, --help              Show this help
 
+Set RADICC_BIN to explicitly select the radicc executable.
+When unset, ../build/radicc is preferred over the executable in PATH.
+
 The script runs `radicc list --json` internally, opens fzf, asks for confirmation,
 and starts `radicc rec --url ...` for the selected program.
 EOF
@@ -36,13 +39,52 @@ resolve_schedule_date() {
     exit 1
   fi
 
+  if date -j -v-1d "+%Y%m%d" >/dev/null 2>&1; then
+    if [ "${value}" -eq 0 ]; then
+      TZ=Asia/Tokyo date "+%Y%m%d"
+      return
+    fi
+    TZ=Asia/Tokyo date -j -v-"${value}"d "+%Y%m%d"
+    return
+  fi
+
   TZ=Asia/Tokyo date -d "${value} days ago" +%Y%m%d
+}
+
+resolve_radicc_bin() {
+  local script_dir
+  local repository_binary
+
+  if [ -n "${RADICC_BIN:-}" ]; then
+    printf '%s\n' "${RADICC_BIN}"
+    return
+  fi
+
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  repository_binary="${script_dir}/../build/radicc"
+  if [ -x "${repository_binary}" ]; then
+    printf '%s\n' "${repository_binary}"
+    return
+  fi
+
+  command -v radicc
 }
 
 require_command jq
 require_command fzf
-require_command radicc
 require_command date
+
+radicc_bin="$(resolve_radicc_bin)"
+if [ ! -x "${radicc_bin}" ]; then
+  echo "Error: radicc executable not found or not executable: ${radicc_bin}" >&2
+  exit 1
+fi
+
+if ! "${radicc_bin}" list --help >/dev/null 2>&1; then
+  echo "Error: selected radicc executable does not support the list subcommand: ${radicc_bin}" >&2
+  echo "Set RADICC_BIN to a current build or rebuild the repository." >&2
+  exit 1
+fi
 
 station_id=""
 date_arg="0"
@@ -89,7 +131,7 @@ if [ -n "${date_offset}" ] && [[ ! "${date_offset}" =~ ^[0-9]+$ ]]; then
 fi
 
 schedule_date="$(resolve_schedule_date "${date_arg}")"
-programs_json="$(radicc list --station-id "${station_id}" --date "${schedule_date}" --json)"
+programs_json="$("${radicc_bin}" list --station-id "${station_id}" --date "${schedule_date}" --json)"
 
 selection="$(
   printf '%s\n' "${programs_json}" \
@@ -140,9 +182,9 @@ read -r confirm < /dev/tty
 case "${confirm}" in
   y|Y)
     if [ -n "${date_offset}" ]; then
-      exec radicc rec --url "${url}" --date-offset "${date_offset}"
+      exec "${radicc_bin}" rec --url "${url}" --date-offset "${date_offset}"
     fi
-    exec radicc rec --url "${url}"
+    exec "${radicc_bin}" rec --url "${url}"
     ;;
   *)
     echo "Cancelled." > /dev/tty

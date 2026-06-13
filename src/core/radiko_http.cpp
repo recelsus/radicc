@@ -51,7 +51,20 @@ std::optional<std::string> curl_text(const std::vector<std::string>& args) {
 }
 
 std::optional<std::string> curl_get_text(const std::string& url) {
-  return curl_text({"curl", "--silent", "--fail", url});
+  return curl_text({
+      "curl",
+      "--silent",
+      "--show-error",
+      "--fail",
+      "--location",
+      "--compressed",
+      "--connect-timeout", "15",
+      "--max-time", "60",
+      "--retry", "2",
+      "--retry-delay", "1",
+      "--retry-all-errors",
+      url,
+  });
 }
 
 std::string trim_crlf(std::string value) {

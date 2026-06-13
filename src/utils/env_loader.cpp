@@ -1,11 +1,38 @@
 #include "utils/env_loader.h"
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <sys/stat.h>
+#include <utility>
 
 namespace radicc {
+namespace {
+
+std::string trim_space(std::string value) {
+  const auto is_space = [](unsigned char ch) { return std::isspace(ch) != 0; };
+  value.erase(value.begin(), std::find_if(value.begin(), value.end(), [&](char ch) {
+    return !is_space(static_cast<unsigned char>(ch));
+  }));
+  value.erase(std::find_if(value.rbegin(), value.rend(), [&](char ch) {
+    return !is_space(static_cast<unsigned char>(ch));
+  }).base(), value.end());
+  return value;
+}
+
+std::string parse_env_value(std::string value) {
+  value = trim_space(std::move(value));
+  if (value.size() >= 2) {
+    const char quote = value.front();
+    if ((quote == '"' || quote == '\'') && value.back() == quote) {
+      value = value.substr(1, value.size() - 2);
+    }
+  }
+  return value;
+}
+
+}  // namespace
 
 std::string get_config_path_for_env(const std::string& filename) {
   const char* xdg_config_home = std::getenv("XDG_CONFIG_HOME");
@@ -25,10 +52,14 @@ void load_env_file(const std::string& filepath) {
   if (!file.is_open()) { std::cerr << "Error: Could not open " << filepath << std::endl; return; }
   std::string line;
   while (std::getline(file, line)) {
+    line = trim_space(std::move(line));
+    if (line.empty() || line.front() == '#') continue;
+
     size_t pos = line.find('=');
     if (pos == std::string::npos) continue;
-    std::string key = line.substr(0, pos);
-    std::string value = line.substr(pos + 1);
+    std::string key = trim_space(line.substr(0, pos));
+    std::string value = parse_env_value(line.substr(pos + 1));
+    if (key.empty()) continue;
     setenv(key.c_str(), value.c_str(), 1);
   }
 }

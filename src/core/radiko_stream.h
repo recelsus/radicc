@@ -18,6 +18,7 @@ struct RadikoStreamSource {
 };
 
 struct RadikoStreamPlan {
+  std::string area_id;
   std::string request_headers;
   std::vector<RadikoStreamSource> sources;
 };

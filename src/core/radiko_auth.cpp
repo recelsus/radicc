@@ -25,6 +25,11 @@ std::optional<std::string> find_json_string(const std::string& body, const std::
 }
 
 std::optional<bool> find_json_boolish(const std::string& body, const std::string& key) {
+  if (const auto value = find_json_string(body, key)) {
+    if (*value == "1" || *value == "true") return true;
+    if (*value == "0" || *value == "false") return false;
+  }
+
   const std::string needle = "\"" + key + "\":";
   const std::size_t pos = body.find(needle);
   if (pos == std::string::npos) return std::nullopt;
@@ -141,6 +146,17 @@ std::optional<RadikoAuthState> authorize_radiko(const std::string& session_id) {
   state.authtoken = *authtoken;
   state.area_id = normalized.substr(0, comma);
   return state;
+}
+
+std::optional<bool> is_station_available_in_area(
+    const std::string& station_id,
+    const std::string& area_id) {
+  if (station_id.empty() || area_id.empty()) return std::nullopt;
+
+  const auto xml = curl_get_text("https://radiko.jp/v3/station/list/" + area_id + ".xml");
+  if (!xml) return std::nullopt;
+
+  return xml->find("<id>" + station_id + "</id>") != std::string::npos;
 }
 
 void logout_from_radiko(const std::string& radiko_session) {
