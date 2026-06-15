@@ -1,0 +1,22 @@
+{
+  "name": "radicc-gas",
+  "description": "Google Apps Script bridge for radicc-server",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "env": "node scripts/generate-env.mjs",
+    "prebuild": "node scripts/prebuild.mjs",
+    "manifest": "node scripts/sync-manifest.mjs",
+    "build": "npm run env && node scripts/esbuild.mjs",
+    "push": "npm run build && npx clasp push --force"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.0.4-alpha",
+    "@types/google-apps-script": "^1.0.97",
+    "dotenv": "^16.4.5",
+    "esbuild": "^0.25.4",
+    "esbuild-gas-plugin": "^0.6.0",
+    "typescript": "^5.8.3"
+  }
+}
