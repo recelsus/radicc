@@ -59,17 +59,20 @@ RecordExecutionResult execute_record_request(const CommandOptions& options) {
     auto auth_state = authorize_radiko(session_id);
     if (!auth_state) print_error_and_exit("Authorization failed.");
     std::cerr << "Radiko authorization succeeded: area=" << auth_state->area_id << std::endl;
-    if (!is_areafree) {
-      const auto station_available =
-          is_station_available_in_area(result.resolved.station_id, auth_state->area_id);
-      if (station_available.has_value() && !*station_available) {
+    const auto station_available =
+        is_station_available_in_area(result.resolved.station_id, auth_state->area_id);
+    if (!is_areafree && station_available.has_value() && !*station_available) {
         print_error_and_exit(
             "Station " + result.resolved.station_id + " is outside authorized area "
             + auth_state->area_id + ". Radiko Premium login is required.");
-      }
     }
+    const bool use_areafree_stream =
+        is_areafree && (!station_available.has_value() || !*station_available);
+    std::cerr << "Station availability: "
+              << (station_available.has_value() ? (*station_available ? "local" : "outside area") : "unknown")
+              << ", stream mode: " << (use_areafree_stream ? "areafree" : "local") << std::endl;
     auto stream_plan = build_timefree_stream_plan(
-        result.resolved.station_id, result.start_time, result.end_time, is_areafree, *auth_state);
+        result.resolved.station_id, result.start_time, result.end_time, use_areafree_stream, *auth_state);
     if (!stream_plan) print_error_and_exit("Failed to resolve timefree stream request.");
     std::size_t chunk_count = 0;
     for (const auto& source : stream_plan->sources) {
@@ -79,7 +82,7 @@ RecordExecutionResult execute_record_request(const CommandOptions& options) {
               << ", chunks=" << chunk_count << std::endl;
     if (!options.json_output) {
       std::cerr << "Radiko authorization area: " << stream_plan->area_id
-                << ", areafree: " << (is_areafree ? "enabled" : "disabled") << std::endl;
+                << ", areafree stream: " << (use_areafree_stream ? "enabled" : "disabled") << std::endl;
     }
     if (!record_radiko(
             *stream_plan, result.paths.filename, result.resolved.pfm, result.resolved.title,

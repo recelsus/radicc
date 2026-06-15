@@ -182,7 +182,10 @@ bool record_radiko(const RadikoStreamPlan& stream_plan, const std::string& filen
         if (!album_title.empty()) av_dict_set(&out_fmt->metadata, "album", album_title.c_str(), 0);
 
         if (!(out_fmt->oformat->flags & AVFMT_NOFILE)) {
-          if (avio_open(&out_fmt->pb, outputPath.c_str(), AVIO_FLAG_WRITE) < 0) {
+          rc = avio_open(&out_fmt->pb, outputPath.c_str(), AVIO_FLAG_WRITE);
+          if (rc < 0) {
+            std::cerr << "libav: avio_open failed for " << outputPath
+                      << ": " << av_error_to_string(rc) << "\n";
             avformat_close_input(&in_fmt);
             cleanup();
             return false;
@@ -217,6 +220,7 @@ bool record_radiko(const RadikoStreamPlan& stream_plan, const std::string& filen
       AVPacket* pkt = av_packet_alloc();
       AVPacket* filt = bsf ? av_packet_alloc() : nullptr;
       if (!pkt || (bsf && !filt)) {
+        std::cerr << "libav: packet allocation failed on chunk " << chunk_index << "\n";
         if (filt) av_packet_free(&filt);
         if (pkt) av_packet_free(&pkt);
         avformat_close_input(&in_fmt);
@@ -258,6 +262,8 @@ bool record_radiko(const RadikoStreamPlan& stream_plan, const std::string& filen
           if (av_bsf_send_packet(bsf, pkt) == 0) {
             while (av_bsf_receive_packet(bsf, filt) == 0) {
               if (write_packet(filt) < 0) {
+                std::cerr << "libav: filtered packet write failed on chunk "
+                          << chunk_index << "\n";
                 av_packet_unref(filt);
                 av_packet_unref(pkt);
                 av_packet_free(&filt);
@@ -272,6 +278,7 @@ bool record_radiko(const RadikoStreamPlan& stream_plan, const std::string& filen
           av_packet_unref(pkt);
         } else {
           if (write_packet(pkt) < 0) {
+            std::cerr << "libav: packet write failed on chunk " << chunk_index << "\n";
             av_packet_unref(pkt);
             if (filt) av_packet_free(&filt);
             av_packet_free(&pkt);
@@ -298,16 +305,27 @@ bool record_radiko(const RadikoStreamPlan& stream_plan, const std::string& filen
     }
 
     if (!out_fmt || !wrote_packets) {
+      std::cerr << "libav: source produced no writable audio packets\n";
       cleanup();
       return false;
     }
 
-    av_write_trailer(out_fmt);
+    const int trailer_rc = av_write_trailer(out_fmt);
+    if (trailer_rc < 0) {
+      std::cerr << "libav: av_write_trailer failed: "
+                << av_error_to_string(trailer_rc) << "\n";
+      cleanup();
+      return false;
+    }
     cleanup();
     return true;
   };
-  for (const auto& source : stream_plan.sources) {
+  for (std::size_t source_index = 0; source_index < stream_plan.sources.size(); ++source_index) {
+    const auto& source = stream_plan.sources[source_index];
+    std::cerr << "libav: trying source " << source_index
+              << " with " << source.chunks.size() << " chunks\n";
     if (do_libav(source)) return true;
+    std::cerr << "libav: source " << source_index << " failed\n";
   }
 #endif
   std::cerr << "Recording failed: libav remux path only (CLI disabled)\n";

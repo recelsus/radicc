@@ -4,6 +4,7 @@
 #include "utils/date.h"
 
 #include <cstdint>
+#include <iostream>
 #include <optional>
 #include <random>
 #include <regex>
@@ -56,6 +57,13 @@ int compute_chunk_length(int remaining_seconds) {
   return ((remaining_seconds / 5) + 1) * 5;
 }
 
+std::string url_origin(const std::string& url) {
+  const std::size_t scheme_end = url.find("://");
+  if (scheme_end == std::string::npos) return {};
+  const std::size_t path_start = url.find('/', scheme_end + 3);
+  return path_start == std::string::npos ? url : url.substr(0, path_start);
+}
+
 }  // namespace
 
 std::optional<RadikoStreamPlan> build_timefree_stream_plan(
@@ -85,6 +93,7 @@ std::optional<RadikoStreamPlan> build_timefree_stream_plan(
 
   const std::string lsid = generate_lsid();
   for (const auto& base_url : playlist_urls) {
+    std::cerr << "Timefree playlist source: " << url_origin(base_url) << std::endl;
     RadikoStreamSource source;
     std::int64_t seek_timestamp = start_unixtime;
     int remaining_seconds = static_cast<int>(end_unixtime - start_unixtime);
