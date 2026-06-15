@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <cerrno>
+#include <csignal>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -162,7 +163,10 @@ void handle_record(int fd, const std::string& body) {
   }
 
   try {
+    std::cerr << "record request started: url=" << *url << std::endl;
     const auto result = execute_record_request(options);
+    std::cerr << "record request completed: station=" << result.resolved.station_id
+              << ", start=" << result.start_time << std::endl;
     const std::string job_id = make_job_id();
     {
       std::lock_guard<std::mutex> lock(g_downloads_mutex);
@@ -182,9 +186,14 @@ void handle_record(int fd, const std::string& body) {
         "}";
     send_json(fd, 200, "OK", json);
   } catch (const RadiccError& error) {
+    std::cerr << "record request rejected: " << error.what() << std::endl;
     send_json(fd, 400, "Bad Request", std::string("{\"error\":\"") + json_escape(error.what()) + "\"}");
   } catch (const std::exception& error) {
+    std::cerr << "record request failed: " << error.what() << std::endl;
     send_json(fd, 500, "Internal Server Error", std::string("{\"error\":\"") + json_escape(error.what()) + "\"}");
+  } catch (...) {
+    std::cerr << "record request failed: unknown exception" << std::endl;
+    send_json(fd, 500, "Internal Server Error", "{\"error\":\"unknown server error\"}");
   }
 }
 
@@ -253,6 +262,8 @@ void handle_client(int fd) {
 
 int main(int argc, char* argv[]) {
   using namespace radicc;
+
+  std::signal(SIGPIPE, SIG_IGN);
 
   std::string bind_host = "127.0.0.1";
   int bind_port = 8080;

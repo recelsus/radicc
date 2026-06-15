@@ -30,10 +30,13 @@ RecordExecutionResult execute_record_request(const CommandOptions& options) {
   std::string session_id;
   bool is_areafree = false;
   if (!radiko_user.empty() && !radiko_pass.empty()) {
+    std::cerr << "Radiko credentials found; attempting login." << std::endl;
     auto login = login_to_radiko(radiko_user, radiko_pass);
     if (login) {
       session_id = login->session_id;
       is_areafree = login->is_areafree;
+      std::cerr << "Radiko login succeeded; areafree: "
+                << (is_areafree ? "enabled" : "disabled") << std::endl;
     } else if (!options.json_output) {
       std::cerr << "Warning: Login failed, proceeding without Radiko Premium access." << std::endl;
     }
@@ -43,6 +46,8 @@ RecordExecutionResult execute_record_request(const CommandOptions& options) {
 
   RecordExecutionResult result;
   result.resolved = resolve_record_command(options, 30);
+  std::cerr << "Resolved recording: station=" << result.resolved.station_id
+            << ", duration_minutes=" << result.resolved.duration << std::endl;
   result.paths = resolve_output_paths(
       output_dir, result.resolved.toml_base_dir, options.output, result.resolved.title, result.resolved.dir_name,
       result.resolved.datetime, result.resolved.date_offset);
@@ -50,8 +55,10 @@ RecordExecutionResult execute_record_request(const CommandOptions& options) {
   result.end_time = generate_14digit_datetime(result.resolved.datetime, result.resolved.duration);
 
   if (!result.resolved.fetch_only) {
+    std::cerr << "Starting Radiko authorization." << std::endl;
     auto auth_state = authorize_radiko(session_id);
     if (!auth_state) print_error_and_exit("Authorization failed.");
+    std::cerr << "Radiko authorization succeeded: area=" << auth_state->area_id << std::endl;
     if (!is_areafree) {
       const auto station_available =
           is_station_available_in_area(result.resolved.station_id, auth_state->area_id);
@@ -64,6 +71,12 @@ RecordExecutionResult execute_record_request(const CommandOptions& options) {
     auto stream_plan = build_timefree_stream_plan(
         result.resolved.station_id, result.start_time, result.end_time, is_areafree, *auth_state);
     if (!stream_plan) print_error_and_exit("Failed to resolve timefree stream request.");
+    std::size_t chunk_count = 0;
+    for (const auto& source : stream_plan->sources) {
+      chunk_count += source.chunks.size();
+    }
+    std::cerr << "Timefree stream plan resolved: sources=" << stream_plan->sources.size()
+              << ", chunks=" << chunk_count << std::endl;
     if (!options.json_output) {
       std::cerr << "Radiko authorization area: " << stream_plan->area_id
                 << ", areafree: " << (is_areafree ? "enabled" : "disabled") << std::endl;
