@@ -1,0 +1,29 @@
+FROM alpine:3.21 AS builder
+
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    pkgconf \
+    ffmpeg-dev \
+    curl-dev
+
+WORKDIR /src
+COPY . /src
+
+RUN cmake -S /src -B /src/build -DCMAKE_BUILD_TYPE=Release \
+ && cmake --build /src/build --target radicc -j$(getconf _NPROCESSORS_ONLN) \
+ && strip /src/build/radicc
+
+
+FROM alpine:3.21 AS runtime
+
+RUN apk add --no-cache \
+    libstdc++ \
+    ffmpeg-libs \
+    curl
+
+WORKDIR /work
+
+COPY --from=builder /src/build/radicc /usr/local/bin/radicc
+
+ENTRYPOINT ["/usr/local/bin/radicc"]

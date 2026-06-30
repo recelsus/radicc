@@ -1,0 +1,17 @@
+# vim: ft=yaml
+
+services:
+  radicc-cli:
+    image: ${RADICC_CLI_IMAGE:-ghcr.io/recelsus/radicc-cli:latest}
+    container_name: radicc-cli
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      HOME: /home/app
+      XDG_CONFIG_HOME: /home/app/.config
+      RADICC_DIR: /recordings
+      RADIKO_USER: ${RADIKO_USER:-}
+      RADIKO_PASS: ${RADIKO_PASS:-}
+    volumes:
+      - ./config:/home/app/.config/radicc:ro
+      - ./recordings:/recordings
+    working_dir: /recordings
