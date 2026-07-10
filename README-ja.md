@@ -73,6 +73,50 @@ filename = ""        # 省略時は <title>-YYYYMMDD.m4a（必ず -YYYYMMDD.m4a 
 
 ## Usage
 
+## Docker CLI
+
+ホストに FFmpeg ライブラリを入れられない環境では、CLI 用イメージを使えます。既存の `docker/Dockerfile` は `radicc-server` 用のまま維持し、CLI は `docker/Dockerfile.cli` を使います。
+
+GHCR のイメージを使う場合:
+
+```bash
+mkdir -p recordings
+docker compose -f docker/docker-compose.cli.yml run --rm \
+  radicc-cli rec --url 'https://radiko.jp/#!/ts/FMO/20250920140000'
+```
+
+認証情報は環境変数から渡せます。
+
+```bash
+RADIKO_USER=you@example.com RADIKO_PASS=yourpassword \
+docker compose -f docker/docker-compose.cli.yml run --rm radicc-cli rec -t example
+```
+
+ローカルでビルドする場合:
+
+```bash
+docker build -f docker/Dockerfile.cli -t radicc-cli .
+mkdir -p recordings
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  -e RADICC_DIR=/recordings \
+  -v "$PWD/recordings:/recordings" \
+  radicc-cli rec --url 'https://radiko.jp/#!/ts/FMO/20250920140000'
+```
+
+設定ファイルを使う場合は、`config/radicc.toml` や `config/.env` をコンテナ内の `/home/app/.config/radicc` にマウントします。`docker/docker-compose.cli.yml` では既定で `config/` と `recordings/` をマウントします。
+
+```bash
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/home/app \
+  -e XDG_CONFIG_HOME=/home/app/.config \
+  -e RADICC_DIR=/recordings \
+  -v "$PWD/config:/home/app/.config/radicc:ro" \
+  -v "$PWD/recordings:/recordings" \
+  radicc-cli rec -t example
+```
+
 ### `rec`
 
 通常

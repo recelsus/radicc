@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(radicc VERSION 1.0 LANGUAGES CXX)
+include(CTest)
 
 # Export compile_commands.json for LSP/clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -221,4 +222,16 @@ if (RADICC_USE_LIBAV)
   target_link_libraries(radicc_recording PRIVATE radicc_ffmpeg)
 else()
   message(FATAL_ERROR "CLI recorder has been deprecated. Build with RADICC_USE_LIBAV=ON (default).")
+endif()
+
+if(BUILD_TESTING)
+  add_executable(radicc_tests
+    tests/app_tests.cpp
+  )
+  target_include_directories(radicc_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/src
+  )
+  target_link_libraries(radicc_tests PRIVATE radicc_radiko)
+  add_test(NAME radicc_tests COMMAND radicc_tests)
 endif()

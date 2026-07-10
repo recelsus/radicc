@@ -3,6 +3,57 @@
 #include <ctime>
 
 namespace radicc {
+namespace {
+
+void append_utf8(std::string& output, unsigned int codepoint) {
+  if (codepoint <= 0x7F) {
+    output.push_back(static_cast<char>(codepoint));
+  } else if (codepoint <= 0x7FF) {
+    output.push_back(static_cast<char>(0xC0 | (codepoint >> 6)));
+    output.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+  } else if (codepoint <= 0xFFFF) {
+    output.push_back(static_cast<char>(0xE0 | (codepoint >> 12)));
+    output.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+    output.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+  } else if (codepoint <= 0x10FFFF) {
+    output.push_back(static_cast<char>(0xF0 | (codepoint >> 18)));
+    output.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
+    output.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+    output.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+  }
+}
+
+int hex_value(char ch) {
+  if (ch >= '0' && ch <= '9') return ch - '0';
+  if (ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
+  if (ch >= 'A' && ch <= 'F') return ch - 'A' + 10;
+  return -1;
+}
+
+bool append_numeric_entity(const std::string& input, std::size_t start, std::size_t& next, std::string& output) {
+  if (input.compare(start, 2, "&#") != 0) return false;
+  const std::size_t end = input.find(';', start + 2);
+  if (end == std::string::npos) return false;
+
+  unsigned int codepoint = 0;
+  std::size_t pos = start + 2;
+  const bool is_hex = pos < end && (input[pos] == 'x' || input[pos] == 'X');
+  if (is_hex) ++pos;
+  if (pos == end) return false;
+
+  for (; pos < end; ++pos) {
+    const int digit = is_hex ? hex_value(input[pos]) : (input[pos] >= '0' && input[pos] <= '9' ? input[pos] - '0' : -1);
+    if (digit < 0) return false;
+    codepoint = codepoint * (is_hex ? 16 : 10) + static_cast<unsigned int>(digit);
+    if (codepoint > 0x10FFFF) return false;
+  }
+
+  append_utf8(output, codepoint);
+  next = end + 1;
+  return true;
+}
+
+}  // namespace
 
 [[noreturn]] void print_error_and_exit(const std::string& message) {
   throw RadiccError(message);
@@ -57,6 +108,34 @@ std::string json_escape(const std::string& input) {
     }
   }
   return escaped;
+}
+
+std::string decode_xml_entities(const std::string& input) {
+  std::string output;
+  output.reserve(input.size());
+  for (std::size_t i = 0; i < input.size();) {
+    if (input.compare(i, 5, "&amp;") == 0) {
+      output.push_back('&');
+      i += 5;
+    } else if (input.compare(i, 6, "&quot;") == 0) {
+      output.push_back('"');
+      i += 6;
+    } else if (input.compare(i, 6, "&apos;") == 0) {
+      output.push_back('\'');
+      i += 6;
+    } else if (input.compare(i, 4, "&lt;") == 0) {
+      output.push_back('<');
+      i += 4;
+    } else if (input.compare(i, 4, "&gt;") == 0) {
+      output.push_back('>');
+      i += 4;
+    } else if (std::size_t next = i; append_numeric_entity(input, i, next, output)) {
+      i = next;
+    } else {
+      output.push_back(input[i++]);
+    }
+  }
+  return output;
 }
 
 std::string current_yyyymmdd_jst() {

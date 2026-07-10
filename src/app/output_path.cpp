@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <sstream>
+#include <string_view>
 
 namespace radicc {
 namespace {
@@ -41,6 +42,37 @@ std::string build_output_path(const std::string& output_dir, const std::string& 
   return dir_name.empty() ? (output_dir + filename) : (output_dir + dir_name + "/" + filename);
 }
 
+bool is_invalid_filename_char(unsigned char ch) {
+  if (ch < 0x20 || ch == 0x7F) return true;
+  switch (ch) {
+    case '<':
+    case '>':
+    case ':':
+    case '"':
+    case '/':
+    case '\\':
+    case '|':
+    case '?':
+    case '*':
+      return true;
+    default:
+      return false;
+  }
+}
+
+std::string sanitize_filename_component(std::string_view value) {
+  std::string sanitized;
+  sanitized.reserve(value.size());
+  for (unsigned char ch : value) {
+    if (!is_invalid_filename_char(ch)) sanitized.push_back(static_cast<char>(ch));
+  }
+
+  while (!sanitized.empty() && (sanitized.back() == ' ' || sanitized.back() == '.')) {
+    sanitized.pop_back();
+  }
+  return sanitized.empty() ? std::string("untitled") : sanitized;
+}
+
 std::string build_filename(
     const std::string& output_option,
     const std::string& title,
@@ -59,7 +91,7 @@ std::string build_filename(
     ymd = os.str();
   }
   const std::string base = output_option.empty() || explicit_output_path ? title : output_option;
-  return base + "-" + ymd + ".m4a";
+  return sanitize_filename_component(base) + "-" + ymd + ".m4a";
 }
 
 }  // namespace
@@ -77,7 +109,7 @@ OutputPaths resolve_output_paths(
   OutputPaths paths;
   paths.output_dir = default_output_dir;
   if (!toml_base_dir.empty() && !explicit_output_path) paths.output_dir = expand_output_dir(toml_base_dir);
-  paths.dir_name = dir_name;
+  paths.dir_name = dir_name.empty() ? std::string() : sanitize_filename_component(dir_name);
   paths.filename = build_filename(output_option, title, datetime, date_offset, explicit_output_path);
 
   if (!output_option.empty() && explicit_output_path) {
@@ -88,7 +120,7 @@ OutputPaths resolve_output_paths(
     } else {
       paths.output_dir = ensure_trailing_separator(
           override_path.has_parent_path() ? override_path.parent_path() : std::filesystem::path("."));
-      paths.filename = override_path.filename().string();
+      paths.filename = sanitize_filename_component(override_path.filename().string());
     }
   }
 

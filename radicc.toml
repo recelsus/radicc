@@ -1,0 +1,224 @@
+# vim: ft=toml
+
+# base_dir は未設定にしています。
+# Docker 実行時は RADICC_DIR=/recordings などの環境変数が保存先になります。
+
+["ザ・ギース尾関高文とOCHA NORMA広本瑠璃の年の差ラジオ"]
+id = "toshi-no-sa-radio"
+station = "RCC"
+title = "ザ・ギース尾関高文とOCHA NORMA広本瑠璃の年の差ラジオ"
+weekday = "Sat"
+time = "18:30"
+dir = "ザ・ギース尾関高文とOCHA NORMA広本瑠璃の年の差ラジオ"
+
+["宮本佳林の雑談ラジオ"]
+id = "karin-zatsudan"
+station = "JORF"
+title = "宮本佳林の雑談ラジオ"
+weekday = "Sat"
+time = "24:30"
+dir = "宮本佳林の雑談ラジオ"
+date_offset = 1
+
+["60TRY部(1) Wed"]
+id = "60trybu-wed-1"
+station = "JORF"
+title = "60TRY部(1)"
+weekday = "Wed"
+time = "18:00"
+dir = "60TRY部"
+
+["60TRY部(2) Wed"]
+id = "60trybu-wed-2"
+station = "JORF"
+title = "60TRY部(2)"
+weekday = "Wed"
+time = "19:00"
+dir = "60TRY部"
+
+["60TRY部(3) Wed"]
+id = "60trybu-wed-3"
+station = "JORF"
+title = "60TRY部(3)"
+weekday = "Wed"
+time = "20:00"
+dir = "60TRY部"
+
+["Aぇ! groupのＭＢＳヤングタウン"]
+id = "aegroup-mbs-youngtown"
+station = "MBS"
+title = "Aぇ! groupのＭＢＳヤングタウン"
+weekday = "Wed"
+time = "22:00"
+dir = "Aぇ! groupのＭＢＳヤングタウン"
+
+["60TRY部(1) Tue"]
+id = "60trybu-tue-1"
+station = "JORF"
+title = "60TRY部(1)"
+weekday = "Tue"
+time = "18:00"
+dir = "60TRY部"
+
+["60TRY部(2) Tue"]
+id = "60trybu-tue-2"
+station = "JORF"
+title = "60TRY部(2)"
+weekday = "Tue"
+time = "19:00"
+dir = "60TRY部"
+
+["60TRY部(3) Tue"]
+id = "60trybu-tue-3"
+station = "JORF"
+title = "60TRY部(3)"
+weekday = "Tue"
+time = "20:00"
+dir = "60TRY部"
+
+["OCHA NORMA 窪田七海のキュルルンッラジオ"]
+id = "kubota-nanami-kyururun-radio"
+station = "HBC"
+title = "OCHA NORMA 窪田七海のキュルルンッラジオ"
+weekday = "Thu"
+time = "23:00"
+dir = "OCHA NORMA 窪田七海のキュルルンッラジオ"
+
+["OCHA NORMAのオチャ飲みばなし"]
+id = "ocha-nomi-banashi"
+station = "FMO"
+title = "OCHA NORMAのオチャ飲みばなし"
+weekday = "Thu"
+time = "20:45"
+dir = "OCHA NORMAのオチャ飲みばなし"
+
+["稲場愛香のまなかんボンソワ"]
+id = "inaba-manakan-bonsoir"
+station = "STV"
+title = "稲場愛香のまなかんボンソワ"
+weekday = "Sun"
+time = "23:30"
+dir = "稲場愛香のまなかんボンソワ"
+
+["アンジュルムステーション1422"]
+id = "angerme-station-1422"
+station = "JORF"
+title = "アンジュルムステーション1422"
+weekday = "Sun"
+time = "24:00"
+dir = "アンジュルムステーション1422"
+date_offset = 1
+
+["モーニング娘。’２６　山崎愛生のメイボンソワ"]
+id = "yamazaki-mei-bonsoir"
+station = "STV"
+title = "モーニング娘。’２６　山崎愛生のメイボンソワ"
+weekday = "Sun"
+time = "23:30"
+dir = "モーニング娘。’２６　山崎愛生のメイボンソワ"
+
+["工藤由愛のたまにタコボンソワ"]
+id = "kudo-yume-tako-bonsoir"
+station = "STV"
+title = "工藤由愛のたまにタコボンソワ"
+weekday = "Sun"
+time = "23:30"
+dir = "工藤由愛のたまにタコボンソワ"
+
+["谷本安美のあんみぃボンソワ"]
+id = "tanimoto-ami-bonsoir"
+station = "STV"
+title = "谷本安美のあんみぃボンソワ"
+weekday = "Sun"
+time = "23:30"
+dir = "谷本安美のあんみぃボンソワ"
+
+["入江里咲のスマイルボンソワ"]
+id = "irie-risa-smile-bonsoir"
+station = "STV"
+title = "入江里咲のスマイルボンソワ"
+weekday = "Sun"
+time = "23:30"
+dir = "入江里咲のスマイルボンソワ"
+
+["ＭＢＳヤングタウン　土曜日"]
+id = "mbs-youngtown-saturday"
+station = "MBS"
+title = "ＭＢＳヤングタウン　土曜日"
+weekday = "Sat"
+time = "22:00"
+dir = "ＭＢＳヤングタウン　土曜日"
+
+["BEYOOOOONDSのDOYOOOOOB!"]
+id = "beyooooonds-doyoooob"
+station = "NACK5"
+title = "BEYOOOOONDSのDOYOOOOOB!"
+weekday = "Sat"
+time = "24:00"
+dir = "BEYOOOOONDSのDOYOOOOOB!"
+date_offset = 1
+
+["Music Palette♪"]
+id = "music-palette"
+station = "TBS"
+title = "Music Palette♪"
+weekday = "Sat"
+time = "04:00"
+dir = "Music Palette♪"
+
+["モーニング娘。’26のモーニング女学院～放課後ミーティング～"]
+id = "morning-musume-morning-jogakuin"
+station = "JORF"
+title = "モーニング娘。’26のモーニング女学院～放課後ミーティング～"
+weekday = "Sat"
+time = "24:00"
+dir = "モーニング娘。’26のモーニング女学院～放課後ミーティング～"
+date_offset = 1
+
+["京成電鉄 presents 中島健人のエヌトワ"]
+id = "kento-nakajima-n-towa"
+station = "BAYFM78"
+title = "京成電鉄 presents 中島健人のエヌトワ"
+weekday = "Sat"
+time = "18:30"
+dir = "京成電鉄 presents 中島健人のエヌトワ"
+
+["bayじゃないか"]
+id = "bayjanaika"
+station = "BAYFM79"
+title = "bayじゃないか"
+weekday = "Sat"
+time = "23:30"
+dir = "bayじゃないか"
+
+["BEYOOOOONDSのラジオクエスト"]
+id = "beyooooonds-radio-quest"
+station = "FMO"
+title = "BEYOOOOONDSのラジオクエスト"
+weekday = "Mon"
+time = "19:00"
+dir = "BEYOOOOONDSのラジオクエスト"
+
+["OCHA NORMA 中山夏月姫とANGERME為永幸音の「 Pinky Friday GOLD」"]
+id = "pinky-friday-gold"
+station = "HELLOFIVE"
+title = "OCHA NORMA 中山夏月姫とANGERME為永幸音の「 Pinky Friday GOLD」"
+weekday = "Fri"
+time = "18:00"
+dir = "OCHA NORMA 中山夏月姫とANGERME為永幸音の「 Pinky Friday GOLD」"
+
+["Aぇ! group小島健のラジキング"]
+id = "koji-radiking"
+station = "FMO"
+title = "Aぇ! group小島健のラジキング"
+weekday = "Wed"
+time = "18:30"
+dir = "Aぇ! group小島健のラジキング"
+
+["モーニング娘。'26井上春華のはるさんち"]
+id = "harusan-chi"
+station = "CBC"
+title = "モーニング娘。'26井上春華のはるさんち"
+weekday = "Mon"
+time = "21:00"
+dir = "井上春華のはるさんち"

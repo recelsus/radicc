@@ -45,7 +45,8 @@ void apply_toml_config(const CommandOptions& options, ResolvedRecord& resolved) 
   if (config.empty()) print_error_and_exit("Missing required configuration. Provide either -t <section> or -i <id>.");
 
   resolved.station_id = config["station"];
-  resolved.title = config.count("title") ? config["title"] : (!options.target.empty() ? options.target : options.id);
+  resolved.title = decode_xml_entities(
+      config.count("title") ? config["title"] : (!options.target.empty() ? options.target : options.id));
   resolved.dir_name = config.count("dir") ? config["dir"] : std::string();
   resolved.pfm = config.count("pfm") ? config["pfm"] : std::string();
   resolved.image_url = config.count("img") ? config["img"] : std::string();

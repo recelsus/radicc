@@ -1,5 +1,6 @@
 #include "core/radiko_programs_xml.h"
 
+#include "app/common.h"
 #include "core/radiko_http.h"
 
 #include <cctype>
@@ -19,7 +20,7 @@ std::optional<std::string> find_attribute(
       const std::size_t value_start = position + needle.size();
       const std::size_t value_end = open_tag.find('"', value_start);
       if (value_end != std::string::npos) {
-        return open_tag.substr(value_start, value_end - value_start);
+        return decode_xml_entities(open_tag.substr(value_start, value_end - value_start));
       }
       return std::nullopt;
     }
@@ -36,7 +37,7 @@ std::string find_element_text(const std::string& body, const std::string& name) 
   const std::size_t content_start = value_start + open_tag.size();
   const std::size_t value_end = body.find(close_tag, content_start);
   if (value_end == std::string::npos) return {};
-  return body.substr(content_start, value_end - content_start);
+  return decode_xml_entities(body.substr(content_start, value_end - content_start));
 }
 
 }  // namespace

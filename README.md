@@ -96,6 +96,50 @@ Parent directories are created automatically. A subdirectory is created only whe
 
 ## Subcommands
 
+## Docker CLI
+
+Use the CLI image when the host cannot install FFmpeg libraries. The existing `docker/Dockerfile` remains dedicated to `radicc-server`; the CLI image uses `docker/Dockerfile.cli`.
+
+Using the GHCR image:
+
+```bash
+mkdir -p recordings
+docker compose -f docker/docker-compose.cli.yml run --rm \
+  radicc-cli rec --url 'https://radiko.jp/#!/ts/FMO/20250920140000'
+```
+
+Pass credentials through environment variables:
+
+```bash
+RADIKO_USER=you@example.com RADIKO_PASS=yourpassword \
+docker compose -f docker/docker-compose.cli.yml run --rm radicc-cli rec -t example
+```
+
+Building locally:
+
+```bash
+docker build -f docker/Dockerfile.cli -t radicc-cli .
+mkdir -p recordings
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  -e RADICC_DIR=/recordings \
+  -v "$PWD/recordings:/recordings" \
+  radicc-cli rec --url 'https://radiko.jp/#!/ts/FMO/20250920140000'
+```
+
+If you use config files, mount `config/radicc.toml` or `config/.env` at `/home/app/.config/radicc` in the container. `docker/docker-compose.cli.yml` mounts `config/` and `recordings/` by default.
+
+```bash
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/home/app \
+  -e XDG_CONFIG_HOME=/home/app/.config \
+  -e RADICC_DIR=/recordings \
+  -v "$PWD/config:/home/app/.config/radicc:ro" \
+  -v "$PWD/recordings:/recordings" \
+  radicc-cli rec -t example
+```
+
 ### `rec`
 
 Record a program from TOML or a Radiko timeshift URL.

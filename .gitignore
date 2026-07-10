@@ -86,6 +86,7 @@ valgrind*.log
 # Temporary Files / Logs
 # -----------------------------
 *.log
+*.m4a
 logs/
 *.pid
 *.sock
