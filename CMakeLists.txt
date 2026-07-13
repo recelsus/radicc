@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(radicc VERSION 1.0 LANGUAGES CXX)
+project(radicc VERSION 0.1.0 LANGUAGES CXX)
 include(CTest)
 
 # Export compile_commands.json for LSP/clangd
@@ -108,6 +108,14 @@ target_compile_definitions(radicc PRIVATE
 include(GNUInstallDirs)
 install(TARGETS radicc radicc-server RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES config/radicc.toml.example config/env.example DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/radicc)
+install(
+  FILES
+    LICENSE
+    README.md
+    README-ja.md
+    THIRD_PARTY_NOTICES.md
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/doc/radicc
+)
 add_executable(radicc_fetch
   src/tools/fetch.cpp
 )

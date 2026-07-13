@@ -15,6 +15,11 @@ Recording uses FFmpeg libraries (`libavformat` / `libavcodec` / `libavutil`) for
   - Ubuntu/Debian: `sudo apt-get install -y libavformat-dev libavcodec-dev libavutil-dev pkg-config`
   - macOS: `brew install ffmpeg pkg-config`
 
+FFmpeg is an external runtime dependency. Radicc does not vendor, bundle, or statically link FFmpeg. Package manager builds should depend on the platform FFmpeg package instead:
+
+- Homebrew: `depends_on "ffmpeg"`
+- Arch Linux/AUR: `depends=('ffmpeg')`
+
 ## Build
 
 ```bash
@@ -197,6 +202,7 @@ List one day of programs for a station.
 
 - Album is always the resolved title; artist is pfm (fetched when available, empty otherwise).
 - Library logging is reduced to errors to avoid noisy per-segment messages.
+- Radicc is MIT licensed. FFmpeg remains an external dependency under its own licence terms.
 - See `FLOW.md` and `FLOW-ja.md` for detailed flow, required/optional fields, and priorities.
 
 ## Server

@@ -16,6 +16,12 @@
   - Ubuntu/Debian: `sudo apt-get install -y libavformat-dev libavcodec-dev libavutil-dev pkg-config`
   - macOS: `brew install ffmpeg pkg-config`
 
+FFmpeg は外部の実行時依存です。Radicc は FFmpeg を vendor 化、同梱、静的リンクしません。
+配信用 package では、各 package manager の FFmpeg package に依存させます。
+
+- Homebrew: `depends_on "ffmpeg"`
+- Arch Linux/AUR: `depends=('ffmpeg')`
+
 ## Build
 
 ```bash
